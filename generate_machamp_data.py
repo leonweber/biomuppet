@@ -17,6 +17,8 @@ import numpy as np
 
 from utils.constants import Tasks
 
+DEBUG = False
+
 
 def overlaps(a, b):
     a = [int(i) for i in a]
@@ -168,7 +170,7 @@ def coref_to_re(example):
     return example
 
 
-def re_to_classification(example):
+def re_to_classification(example, mask_entities=True):
     new_example = {"text": [""], "labels": [[""]]}
     relations = defaultdict(set)
     for relation in example["relations"][0]:
@@ -193,6 +195,7 @@ def re_to_classification(example):
                     head=head,
                     tail=tail,
                     passage_offset=passage_range[0],
+                    mask_entities=mask_entities
                 )
                 labels = relations[(head["id"], tail["id"])]
                 new_example["text"].append(text)
@@ -298,7 +301,10 @@ def get_all_re_datasets() -> List[SingleDataset]:
         for split_name, split in dataset.items():
             dataset[split_name] = subsample_negative(split)
 
-        re_datasets.append(SingleDataset(data=dataset, name=dataset_name))
+        re_datasets.append(SingleDataset(data=dataset, name=dataset_name + "_RE"))
+
+        if DEBUG:
+            break
 
     return re_datasets
 
@@ -323,7 +329,10 @@ def get_all_classification_datasets() -> List[SingleDataset]:
             dataset = datasets.load_dataset(
                 str(dataset_loader), name=f"{dataset_name}_bigbio_text"
             )
-            classification_datasets.append(SingleDataset(data=dataset, name=dataset_name))
+            classification_datasets.append(SingleDataset(data=dataset, name=dataset_name + "_classification"))
+
+            if DEBUG:
+                break
 
         except (ValueError, ImportError) as err:
             print(f"Skipping {dataset_loader} because of {err}")
@@ -354,7 +363,7 @@ def get_all_coref_datasets() -> List[SingleDataset]:
 
         dataset = dataset.map(split_sentences)
         dataset = dataset.map(coref_to_re).map(
-            re_to_classification,
+            partial(re_to_classification, mask_entities=False),
             batched=True,
             batch_size=1,
             remove_columns=dataset["train"].column_names,
@@ -364,7 +373,10 @@ def get_all_coref_datasets() -> List[SingleDataset]:
         for split_name, split in dataset.items():
             dataset[split_name] = subsample_negative(split)
 
-        coref_datasets.append(SingleDataset(dataset, name=dataset_name))
+        coref_datasets.append(SingleDataset(dataset, name=dataset_name + "_coref"))
+
+        if DEBUG:
+            break
 
     return coref_datasets
 
@@ -376,7 +388,7 @@ if __name__ == "__main__":
 
     config = {}
 
-    out = Path("data/bigbio/")
+    out = Path("machamp/data/bigbio/")
     out.mkdir(exist_ok=True, parents=True)
 
     # Process datasets
@@ -431,5 +443,6 @@ if __name__ == "__main__":
 
 
     ## Write Machamp config
-    with open("configs/bigbio_debug.json", "w") as f:
+    fname = "machamp/configs/bigbio_debug.json" if DEBUG else "machamp/configs/bigbio_full.json"
+    with open(fname, "w") as f:
         json.dump(config, f, indent=1)
