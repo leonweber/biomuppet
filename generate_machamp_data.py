@@ -376,7 +376,7 @@ if __name__ == "__main__":
 
     config = {}
 
-    out = Path("../machamp/scripts/data/bigbio/")
+    out = Path("data/bigbio/")
     out.mkdir(exist_ok=True, parents=True)
 
     # Process datasets
@@ -431,5 +431,5 @@ if __name__ == "__main__":
 
 
     ## Write Machamp config
-    with open("../machamp/configs/bigbio_debug.json", "w") as f:
+    with open("configs/bigbio_debug.json", "w") as f:
         json.dump(config, f, indent=1)
