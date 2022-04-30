@@ -252,9 +252,7 @@ class SingleDataset:
 def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
     dataset_loaders_for_task = []
     biodatasets_path = Path(bigbio.__file__).resolve().parents[1] / "biodatasets"
-    print(biodatasets_path)
     all_dataset_loaders = list(biodatasets_path.glob("*/*py"))
-    print(all_dataset_loaders)
     for dataset_loader in all_dataset_loaders:
         spec = importlib.util.spec_from_file_location("foo", dataset_loader)
         module = importlib.util.module_from_spec(spec)
