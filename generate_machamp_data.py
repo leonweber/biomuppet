@@ -6,7 +6,7 @@ from collections import defaultdict
 from functools import partial
 from pathlib import Path
 from typing import List
-import importlib
+import importlib.util
 from inspect import getmembers
 
 import datasets
@@ -15,7 +15,8 @@ from flair.tokenization import SegtokSentenceSplitter
 from tqdm import tqdm
 import numpy as np
 
-from utils.constants import Tasks
+import bigbio
+from bigbio.utils.constants import Tasks
 
 DEBUG = False
 
@@ -250,15 +251,14 @@ class SingleDataset:
 
 def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
     dataset_loaders_for_task = []
-
-    all_dataset_loaders = list(Path("biodatasets").glob("*/*py"))
+    biodatasets_path = Path(bigbio.__file__).resolve().parents[1] / "biodatasets"
+    all_dataset_loaders = list(biodatasets_path.glob("*/*py"))
     for dataset_loader in all_dataset_loaders:
-        try:
-            module = str(dataset_loader).replace("/", ".").replace(".py", "")
-            if task in importlib.import_module(module)._SUPPORTED_TASKS:
-                dataset_loaders_for_task.append(str(dataset_loader))
-        except ImportError as err:
-            print(f"Skipping {dataset_loader} because of {err}")
+        spec = importlib.util.spec_from_file_location("foo", dataset_loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        if task in module._SUPPORTED_TASKS:
+            dataset_loaders_for_task.append(str(dataset_loader))
 
     return dataset_loaders_for_task
 
@@ -379,7 +379,6 @@ def get_all_coref_datasets() -> List[SingleDataset]:
             break
 
     return coref_datasets
-
 
 if __name__ == "__main__":
     re_datasets = get_all_re_datasets()
