@@ -377,13 +377,72 @@ def get_all_coref_datasets() -> List[SingleDataset]:
 
         if DEBUG:
             break
-
+        
     return coref_datasets
+
+def get_all_sts_datasets() -> List[SingleDataset]:
+    sts_datasets = []
+
+    for dataset_loader in tqdm(
+            get_all_dataloaders_for_task(Tasks.SEMANTIC_SIMILARITY),
+            desc="Preparing STS datasets",
+    ):
+        dataset_name = Path(dataset_loader).with_suffix("").name
+
+        if "pubhealth" in dataset_name: # not sts
+            continue
+
+        
+        dataset = datasets.load_dataset(
+            str(dataset_loader), name=f"{dataset_name}_bigbio_pairs"
+        )
+
+        def replace_(example):
+            example["text_1"] = example["text_1"].strip().replace("\t", " ").replace("\n", " ")
+            example["text_2"] = example["text_2"].strip().replace("\t", " ").replace("\n", " ")
+            return example
+
+        def prep_label_(example):
+            import math
+            example["label"] = round(float(example["label"]))
+            if dataset_name in ["minimayosrs", "mayosrs"]:
+                example["label"] -= 1
+
+            assert example["label"] >= 0, "Oh no"
+            
+            
+            if dataset_name == "biosses":
+                assert 0 <= example["label"] <= 4, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name in ["bio_simlex", "bio_sim_verb"]:
+                assert 0 <= example["label"] <= 10, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "ehr_rel":
+                assert 0 <= example["label"] <= 3, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name in ["minimayosrs", "mayosrs"]:
+                assert 0 <= example["label"] <= 9, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "mqp":
+                assert 0 <= example["label"] <= 1, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "umnsrs":
+                assert 0 <= example["label"] <= 1600, f"Oh no {dataset_name} {example['label']}"
+
+
+            return example
+
+        dataset = dataset.map(replace_)
+        dataset = dataset.map(prep_label_)
+        dataset = dataset.remove_columns(['id', "document_id"])
+        
+        sts_datasets.append(SingleDataset(dataset, name=dataset_name + "_sts"))
+
+        if DEBUG:
+            break
+
+    return sts_datasets
 
 if __name__ == "__main__":
     re_datasets = get_all_re_datasets()
     coref_datasets = get_all_coref_datasets()
     classification_datasets = get_all_classification_datasets()
+    sts_datasets = get_all_sts_datasets()
 
     config = {}
 
@@ -417,7 +476,7 @@ if __name__ == "__main__":
             })
 
         ### Write train file
-        with (out / dataset.name).with_suffix(".train").open("w") as f:
+        with (out / dataset.name).with_suffix(".train").open("w", encoding="utf8") as f:
             for example in dataset.data["train"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
@@ -429,7 +488,7 @@ if __name__ == "__main__":
                 f.write(text + "\t" + label + "\n")
 
         ### Write validation file
-        with (out / dataset.name).with_suffix(".valid").open("w") as f:
+        with (out / dataset.name).with_suffix(".valid").open("w", encoding="utf8") as f:
             for example in dataset.data["valid"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
@@ -439,6 +498,32 @@ if __name__ == "__main__":
                     label = "None"
 
                 f.write(text + "\t" + label + "\n")
+
+    
+    for dataset in tqdm(sts_datasets):
+        
+        config[dataset.name] = {
+            "train_data_path": str((out / dataset.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
+            "sent_idxs": [0,1],
+            "tasks": {
+                dataset.name: {
+                    "column_idx": 2,
+                    "task_type": "classification"
+                }
+            }
+        }
+
+        ### Generate validation split if not available
+        if not "valid" in dataset.data:
+            train_valid = dataset.data["train"].train_test_split(test_size=0.1)
+            dataset.data = DatasetDict({
+                "train": train_valid["train"],
+                "valid": train_valid["test"],
+            })
+        
+        dataset.data["train"].to_csv((out / dataset.name).with_suffix(".train"), sep="\t", index=None, header=None)
+        dataset.data["valid"].to_csv((out / dataset.name).with_suffix(".valid"), sep="\t", index=None, header=None)
 
 
     ## Write Machamp config
