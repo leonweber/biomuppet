@@ -23,7 +23,7 @@ import pytorch_lightning as pl
 from torch import nn
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 
-from utils.constants import Tasks
+from bigbio.utils.constants import Tasks
 
 
 pl.seed_everything(42)
@@ -231,7 +231,9 @@ def get_classification_meta(dataset, name):
         name=name
     )
 
-
+###
+# Relation Extraction Tasks Data Loading
+###
 def get_all_re_datasets(tokenizer, split="train") -> List[SingleDataset]:
     re_datasets = []
 
@@ -246,6 +248,7 @@ def get_all_re_datasets(tokenizer, split="train") -> List[SingleDataset]:
         except ValueError as ve:
             print(f"Skipping {dataset_loader} because of {ve}")
             continue
+
         dataset = dataset.map(re_to_classification)
         classification_dataset = {"text": [], "labels": []}
         for example in dataset:
@@ -265,6 +268,9 @@ def get_all_re_datasets(tokenizer, split="train") -> List[SingleDataset]:
     return re_datasets
 
 
+###
+# Classificaiton Tasks Data Loading
+###
 def get_all_classification_datasets(tokenizer, split="train") -> List[SingleDataset]:
     classification_datasets = []
 
