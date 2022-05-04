@@ -13,7 +13,7 @@ ln -s <PATH_TO_BIOMEDICAL_DIRECTORY>/biodatasets ./biodatasets
 ```
 
 After setting the dependency, you can simply running the training code with:
-````
+```
 python train_biomuppet.py --output_dir <PATH_TO_RESULT_DIRECTORY>
 ```
 
