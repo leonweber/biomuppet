@@ -389,8 +389,13 @@ def get_all_sts_datasets() -> List[SingleDataset]:
     ):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
-        if "pubhealth" in dataset_name: # not sts
+        if "pubhealth" in dataset_name: # not sts but classification fixed in #545 (not yet merged)
             continue
+        elif "bio_sim_lex" in dataset_name: # label contains \n fixed in #541 (not yet merged)
+            continue
+        elif "umnsrs" in dataset_name: # mayor flaws (not downloadable) fixed in #538 (not yet merged)
+            continue
+        
 
         
         dataset = datasets.load_dataset(
@@ -402,33 +407,31 @@ def get_all_sts_datasets() -> List[SingleDataset]:
             example["text_2"] = example["text_2"].strip().replace("\t", " ").replace("\n", " ")
             return example
 
-        def prep_label_(example):
-            import math
-            example["label"] = round(float(example["label"]))
-            if dataset_name in ["minimayosrs", "mayosrs"]:
-                example["label"] -= 1
+        def label_asserts_(example):
 
-            assert example["label"] >= 0, "Oh no"
-            
-            
+            if dataset_name == "mqp":
+                label = int(example["label"])
+            else:
+                label = float(example["label"])
+
+            assert label >= 0, "Oh no"
+
+            # all datasets are range, except mqp (0/1)
             if dataset_name == "biosses":
-                assert 0 <= example["label"] <= 4, f"Oh no {dataset_name} {example['label']}"
+                assert 0 <= label <= 4, f"Oh no {dataset_name} {example['label']}"
             elif dataset_name in ["bio_simlex", "bio_sim_verb"]:
-                assert 0 <= example["label"] <= 10, f"Oh no {dataset_name} {example['label']}"
+                assert 0 <= label <= 10, f"Oh no {dataset_name} {example['label']}"
             elif dataset_name == "ehr_rel":
-                assert 0 <= example["label"] <= 3, f"Oh no {dataset_name} {example['label']}"
+                assert 0 <= label <= 3, f"Oh no {dataset_name} {example['label']}"
             elif dataset_name in ["minimayosrs", "mayosrs"]:
-                assert 0 <= example["label"] <= 9, f"Oh no {dataset_name} {example['label']}"
+                assert 1 <= label <= 10, f"Oh no {dataset_name} {example['label']}"
             elif dataset_name == "mqp":
-                assert 0 <= example["label"] <= 1, f"Oh no {dataset_name} {example['label']}"
+                assert label == 0 or label== 1, f"Oh no {dataset_name} {example['label']}"
             elif dataset_name == "umnsrs":
-                assert 0 <= example["label"] <= 1600, f"Oh no {dataset_name} {example['label']}"
-
-
-            return example
+                assert 0 <= label <= 1600, f"Oh no {dataset_name} {example['label']}"
 
         dataset = dataset.map(replace_)
-        dataset = dataset.map(prep_label_)
+        dataset = dataset.map(label_asserts_)
         dataset = dataset.remove_columns(['id', "document_id"])
         
         sts_datasets.append(SingleDataset(dataset, name=dataset_name + "_sts"))
@@ -439,9 +442,9 @@ def get_all_sts_datasets() -> List[SingleDataset]:
     return sts_datasets
 
 if __name__ == "__main__":
-    re_datasets = get_all_re_datasets()
-    coref_datasets = get_all_coref_datasets()
-    classification_datasets = get_all_classification_datasets()
+    re_datasets = []
+    coref_datasets = []
+    classification_datasets = []
     sts_datasets = get_all_sts_datasets()
 
     config = {}
@@ -501,7 +504,7 @@ if __name__ == "__main__":
 
     
     for dataset in tqdm(sts_datasets):
-        
+        # WRONG, none of them are classification, except mqp (0/1 dissimilar/similar)
         config[dataset.name] = {
             "train_data_path": str((out / dataset.name).with_suffix(".train")),
             "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
