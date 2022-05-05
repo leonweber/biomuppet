@@ -380,6 +380,64 @@ def get_all_coref_datasets() -> List[SingleDataset]:
 
     return coref_datasets
 
+def get_all_ner_datasets() -> List[SingleDataset]:
+    ner_datasets = []
+
+    for dataset_loader in tqdm(
+            get_all_dataloaders_for_task(Tasks.NAMED_ENTITY_RECOGNITION),
+            desc="Preparing NER datasets",
+    ):
+        dataset_name = Path(dataset_loader).with_suffix("").name
+        print(dataset_name)
+
+        # if "pubhealth" in dataset_name: # not sts
+        #     continue
+        
+        dataset = datasets.load_dataset(
+            str(dataset_loader), name=f"{dataset_name}_bigbio_pairs"
+        )
+
+        def replace_(example):
+            example["text_1"] = example["text_1"].strip().replace("\t", " ").replace("\n", " ")
+            example["text_2"] = example["text_2"].strip().replace("\t", " ").replace("\n", " ")
+            return example
+
+        def prep_label_(example):
+            import math
+            example["label"] = round(float(example["label"]))
+            if dataset_name in ["minimayosrs", "mayosrs"]:
+                example["label"] -= 1
+
+            assert example["label"] >= 0, "Oh no"
+            
+            
+            if dataset_name == "biosses":
+                assert 0 <= example["label"] <= 4, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name in ["bio_simlex", "bio_sim_verb"]:
+                assert 0 <= example["label"] <= 10, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "ehr_rel":
+                assert 0 <= example["label"] <= 3, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name in ["minimayosrs", "mayosrs"]:
+                assert 0 <= example["label"] <= 9, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "mqp":
+                assert 0 <= example["label"] <= 1, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "umnsrs":
+                assert 0 <= example["label"] <= 1600, f"Oh no {dataset_name} {example['label']}"
+
+
+            return example
+
+        dataset = dataset.map(replace_)
+        dataset = dataset.map(prep_label_)
+        dataset = dataset.remove_columns(['id', "document_id"])
+        
+        sts_datasets.append(SingleDataset(dataset, name=dataset_name + "_sts"))
+
+        if DEBUG:
+            break
+
+    return sts_datasets
+
 if __name__ == "__main__":
     re_datasets = get_all_re_datasets()
     coref_datasets = get_all_coref_datasets()
