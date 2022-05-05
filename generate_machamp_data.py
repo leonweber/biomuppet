@@ -204,6 +204,107 @@ def re_to_classification(example, mask_entities=True):
 
     return new_example
 
+#TODO: Transform QA to classification
+def qa_to_classification(example, mask_entities=True):
+    new_example = {"text": [""], "labels": [[""]]}
+    relations = defaultdict(set)
+    for relation in example["relations"][0]:
+        relations[(relation["arg1_id"], relation["arg2_id"])].add(relation["type"])
+        relations[(relation["arg2_id"], relation["arg1_id"])].add(relation["type"])
+    for passage in example["passages"][0]:
+        passage_range = range(*passage["offsets"][0])
+
+        passage_entities = []
+        for entity in example["entities"][0]:
+            start = entity["offsets"][0][0]
+            end = entity["offsets"][-1][1]
+            if start in passage_range and (end - 1) in passage_range:
+                passage_entities.append(entity)
+
+        for i, head in enumerate(passage_entities):
+            for tail in passage_entities[i:]:
+                if head == tail:
+                    continue
+                text = insert_pair_markers(
+                    passage["text"][0],
+                    head=head,
+                    tail=tail,
+                    passage_offset=passage_range[0],
+                    mask_entities=mask_entities
+                )
+                labels = relations[(head["id"], tail["id"])]
+                new_example["text"].append(text)
+                new_example["labels"].append(labels)
+
+    return new_example
+
+#TODO: transforming QA to multiple choice
+def qa_to_sequence(example, mask_entities=True):
+    new_example = {"text": [""], "labels": [[""]]}
+    relations = defaultdict(set)
+    for relation in example["relations"][0]:
+        relations[(relation["arg1_id"], relation["arg2_id"])].add(relation["type"])
+        relations[(relation["arg2_id"], relation["arg1_id"])].add(relation["type"])
+    for passage in example["passages"][0]:
+        passage_range = range(*passage["offsets"][0])
+
+        passage_entities = []
+        for entity in example["entities"][0]:
+            start = entity["offsets"][0][0]
+            end = entity["offsets"][-1][1]
+            if start in passage_range and (end - 1) in passage_range:
+                passage_entities.append(entity)
+
+        for i, head in enumerate(passage_entities):
+            for tail in passage_entities[i:]:
+                if head == tail:
+                    continue
+                text = insert_pair_markers(
+                    passage["text"][0],
+                    head=head,
+                    tail=tail,
+                    passage_offset=passage_range[0],
+                    mask_entities=mask_entities
+                )
+                labels = relations[(head["id"], tail["id"])]
+                new_example["text"].append(text)
+                new_example["labels"].append(labels)
+
+    return new_example
+
+#TODO: Transform QA to machamp
+def qa_to_machamp(example, mask_entities=True):
+    new_example = {"text": [""], "labels": [[""]]}
+    relations = defaultdict(set)
+    for relation in example["relations"][0]:
+        relations[(relation["arg1_id"], relation["arg2_id"])].add(relation["type"])
+        relations[(relation["arg2_id"], relation["arg1_id"])].add(relation["type"])
+    for passage in example["passages"][0]:
+        passage_range = range(*passage["offsets"][0])
+
+        passage_entities = []
+        for entity in example["entities"][0]:
+            start = entity["offsets"][0][0]
+            end = entity["offsets"][-1][1]
+            if start in passage_range and (end - 1) in passage_range:
+                passage_entities.append(entity)
+
+        for i, head in enumerate(passage_entities):
+            for tail in passage_entities[i:]:
+                if head == tail:
+                    continue
+                text = insert_pair_markers(
+                    passage["text"][0],
+                    head=head,
+                    tail=tail,
+                    passage_offset=passage_range[0],
+                    mask_entities=mask_entities
+                )
+                labels = relations[(head["id"], tail["id"])]
+                new_example["text"].append(text)
+                new_example["labels"].append(labels)
+
+    return new_example
 
 def split_sentences(example):
     new_passages = []
@@ -379,6 +480,53 @@ def get_all_coref_datasets() -> List[SingleDataset]:
             break
 
     return coref_datasets
+
+
+def get_all_qa_datasets() -> List[SingleDataset]:
+    """
+    Function that transforms QA dataset to MaChamp format;
+    Transforms QA dataset with yes or no type --> MaChamp classification
+    Transforms QA datasest with multiple choice --> MaChamp Sequence labeling
+    :return: qa_datasets
+    """
+    qa_datasets = []
+
+    for dataset_loader in tqdm(
+            get_all_dataloaders_for_task(Tasks.QUESTION_ANSWERING),
+            desc="Preparing QA datasets",
+    ):
+        dataset_name = Path(dataset_loader).with_suffix("").name
+
+        if "mediqa_data" in dataset_name or "biology_how_why_corpus" in dataset_name:
+            continue
+
+        try:
+            dataset = datasets.load_dataset(
+                str(dataset_loader), name=f"{dataset_name}_bigbio_qa"
+            )
+        except ValueError as ve:
+            print(f"Skipping {dataset_loader} because of {ve}")
+            continue
+        # COMPLETE THIS PART FOR QA
+
+        dataset = dataset.map(split_sentences)
+        dataset = dataset.map(coref_to_re).map(
+            partial(re_to_classification, mask_entities=False),
+            batched=True,
+            batch_size=1,
+            remove_columns=dataset["train"].column_names,
+        )
+        # COMPLETE THIS PART
+        dataset = dataset.filter(is_valid_re)
+        for split_name, split in dataset.items():
+            dataset[split_name] = subsample_negative(split)
+
+        qa_datasets.append(SingleDataset(dataset, name=dataset_name + "_qa"))
+
+        if DEBUG:
+            break
+
+    return qa_datasets
 
 if __name__ == "__main__":
     re_datasets = get_all_re_datasets()
