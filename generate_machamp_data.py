@@ -391,7 +391,7 @@ def get_all_sts_datasets() -> List[SingleDataset]:
 
         if "pubhealth" in dataset_name: # not sts but classification fixed in #545 (not yet merged)
             continue
-        elif "bio_sim_lex" in dataset_name: # label contains \n fixed in #541 (not yet merged)
+        elif "bio_simlex" in dataset_name: # label contains \n fixed in #541 (not yet merged)
             continue
         elif "umnsrs" in dataset_name: # mayor flaws (not downloadable) fixed in #538 (not yet merged)
             continue
