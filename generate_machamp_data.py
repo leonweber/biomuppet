@@ -442,9 +442,9 @@ def get_all_sts_datasets() -> List[SingleDataset]:
     return sts_datasets
 
 if __name__ == "__main__":
-    re_datasets = []
-    coref_datasets = []
-    classification_datasets = []
+    re_datasets = get_all_re_datasets()
+    coref_datasets = get_all_coref_datasets()
+    classification_datasets = get_all_classification_datasets()
     sts_datasets = get_all_sts_datasets()
 
     config = {}
