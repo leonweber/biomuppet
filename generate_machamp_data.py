@@ -306,6 +306,26 @@ def qa_to_machamp(example, mask_entities=True):
 
     return new_example
 
+def get_classification_meta(dataset, name):
+    is_multilabel = False
+    label_to_idx = {"None": 0}
+    for labels in dataset['train']['labels']:
+        if len(labels) > 1:
+            is_multilabel = True
+        for label in labels:
+            if label not in label_to_idx:
+                label_to_idx[label] = len(label_to_idx)
+    idx_to_label = {v: k for k, v in label_to_idx.items()}
+    task_type = "multilabel_clf" if is_multilabel else "clf"
+
+    return DatasetMetaInformation(
+        id_to_label=idx_to_label,
+        label_to_id=label_to_idx,
+        type=task_type,
+        name=name
+    )
+
+
 def split_sentences(example):
     new_passages = []
 
@@ -344,9 +364,18 @@ def subsample_negative(classification_dataset):
 
 
 class SingleDataset:
-    def __init__(self, data, name):
+    def __init__(self, data, meta, split="train"):
+        self.split = split
         self.data = data
-        self.name = name
+        self.meta = meta
+
+    def __getitem__(self, item):
+        example = self.data[self.split][item]
+        example["meta"] = self.meta
+        return example
+
+    def __len__(self):
+        return len(self.data[self.split])
 
 
 
@@ -363,13 +392,12 @@ def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
 
     return dataset_loaders_for_task
 
+
 def get_all_re_datasets() -> List[SingleDataset]:
     re_datasets = []
 
-    for dataset_loader in tqdm(
-            get_all_dataloaders_for_task(Tasks.RELATION_EXTRACTION),
-            desc="Preparing RE datasets",
-    ):
+    dataset_loaders = get_all_dataloaders_for_task(Tasks.RELATION_EXTRACTION)
+    for dataset_loader in tqdm(dataset_loaders, desc="Preparing RE datasets"):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
         if (
@@ -399,13 +427,15 @@ def get_all_re_datasets() -> List[SingleDataset]:
         )
         dataset = dataset.filter(is_valid_re)
 
-        for split_name, split in dataset.items():
-            dataset[split_name] = subsample_negative(split)
+        # for split_name, split in dataset.items():
+        #     dataset[split_name] = subsample_negative(split)
 
-        re_datasets.append(SingleDataset(data=dataset, name=dataset_name + "_RE"))
+        meta = get_classification_meta(dataset=dataset, name=dataset_name + "_RE")
+        re_datasets.append(SingleDataset(data=dataset, meta=meta))
 
-        if DEBUG:
+        if DEBUG and len(re_datasets) >= 3:
             break
+
 
     return re_datasets
 
@@ -423,6 +453,7 @@ def get_all_classification_datasets() -> List[SingleDataset]:
                 "cantemist" in dataset_name
                 or "pharmaconer" in dataset_name
                 or "hallmarks" in dataset_name
+                or "nlmchem" in dataset_name
         ):
             continue
 
@@ -430,9 +461,10 @@ def get_all_classification_datasets() -> List[SingleDataset]:
             dataset = datasets.load_dataset(
                 str(dataset_loader), name=f"{dataset_name}_bigbio_text"
             )
-            classification_datasets.append(SingleDataset(data=dataset, name=dataset_name + "_classification"))
+            meta = get_classification_meta(dataset=dataset, name=dataset_name + "_TEXT")
+            classification_datasets.append(SingleDataset(data=dataset, meta=meta))
 
-            if DEBUG:
+            if DEBUG and len(classification_datasets) >= 3:
                 break
 
         except (ValueError, ImportError) as err:
@@ -471,10 +503,11 @@ def get_all_coref_datasets() -> List[SingleDataset]:
         )
 
         dataset = dataset.filter(is_valid_re)
-        for split_name, split in dataset.items():
-            dataset[split_name] = subsample_negative(split)
+        # for split_name, split in dataset.items():
+        #     dataset[split_name] = subsample_negative(split)
+        meta = get_classification_meta(dataset=dataset, name=dataset_name + "_COREF")
+        coref_datasets.append(SingleDataset(data=dataset, meta=meta))
 
-        coref_datasets.append(SingleDataset(dataset, name=dataset_name + "_coref"))
 
         if DEBUG:
             break
