@@ -22,7 +22,7 @@ import multiprocessing
 import bigbio
 from bigbio.utils.constants import Tasks
 
-DEBUG = True
+DEBUG = False
 tokenizer = SpaceTokenizer()
 
 # Skip non-english, local dataset, and problematic dataset
@@ -382,7 +382,7 @@ def bigbio_ner_to_conll(sample):
         # extract entity tokens
         label = passage[rs_idx:re_idx]
         for i, token in enumerate(tokenizer.tokenize(label)):
-            conll_data.append((token, f"{'B' if i == 0 else 'I'}-{regex.sub('',entity['type'])}"))
+            conll_data.append((token, f"{'B' if i == 0 else 'I'}-{regex.sub('', entity['type'])}"))
                                          
         # extract entity words
         passage = passage[re_idx:]
@@ -562,7 +562,7 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                     dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
                     dataset = dataset.map(bigbio_ner_to_conll,
                         remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations'],
-                        load_from_cache_file=DEBUG,
+                        load_from_cache_file=not DEBUG,
                         num_proc=multiprocessing.cpu_count() * 2
                     )
                     ner_datasets.append(SingleDataset(dataset, name=dataset_name + "_ner"))
@@ -576,7 +576,7 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                     dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
                     dataset = dataset.map(bigbio_ner_to_conll, 
                         remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations'],
-                        load_from_cache_file=DEBUG,
+                        load_from_cache_file=not DEBUG,
                         num_proc=multiprocessing.cpu_count() * 2
                     )
                     ner_datasets.append(SingleDataset(dataset, name=dataset_name + "_ner"))
