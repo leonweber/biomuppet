@@ -14,12 +14,43 @@ from datasets import DatasetDict
 from flair.tokenization import SegtokSentenceSplitter
 from tqdm import tqdm
 import numpy as np
+import pandas as pd
+import glob
+import re
+from spacy.lang.en import English
 
 import bigbio
 from bigbio.utils.constants import Tasks
 
 DEBUG = False
+nlp = English() # Global SpaCy tokenizer
 
+# Skip non-english and local dataset
+ignored_datasets = [
+    'n2c2_2018_track2', 'n2c2_2018_track1', 'n2c2_2011', 'n2c2_2010',
+    'n2c2_2009', 'n2c2_2008', 'n2c2_2006_smokers', 'n2c2_2006_deid',
+    'psytar', 'swedish_medical_ner', 'quaero', 'pho_ner', 'ctebmsp'
+]
+
+# Dataset to name & subset_id mapping for special cases datasets
+dataset_to_name_subset_map = {
+    'n2c2_2010': [('n2c2_2010_bigbio_kb', 'n2c2_2010')],
+    'spl_adr_200db': [('spl_adr_200db_train_bigbio_kb', 'spl_adr_200db_train')],
+    'pubtator_central' : [('pubtator_central_bigbio_kb','pubtator_central')],
+    'mantra_gsc': [
+        ('mantra_gsc_en_emea_bigbio_kb', 'mantra_gsc_en_EMEA'), 
+        ('mantra_gsc_en_medline_bigbio_kb', 'mantra_gsc_en_Medline'),
+        ('mantra_gsc_en_patents_bigbio_kb','mantra_gsc_en_Patents')
+    ],
+    'tmvar_v1': [('tmvar_v1_bigbio_kb','tmvar_v1')],
+    'tmvar_v2': [('tmvar_v2_bigbio_kb','tmvar_v2')],
+    'genetag': [
+        ('genetaggold_bigbio_kb', 'genetaggold'),
+        ('genetagcorrect_bigbio_kb', 'genetagcorrect')
+    ],
+    'chebi_nactem': ['chebi_nactem_abstr_ann2_bigbio_kb', 'chebi_nactem_fullpaper_bigbio_kb'],
+    'dian_iber_eval_en_bigbio_kb': ['diann_iber_eval_en_bigbio_kb']
+}
 
 def overlaps(a, b):
     a = [int(i) for i in a]
@@ -241,12 +272,113 @@ def subsample_negative(classification_dataset):
 
     return dataset
 
+###
+# NER Utils
+###
+def get_biodataset_metadata():
+    biodataset_path = biodatasets_path = Path(bigbio.__file__).resolve().parents[1] / "biodatasets"
+    datasets_meta = []
 
+    for path in glob.glob(f'{biodataset_path}/*/*.py'):
+        folder_path, file_path = path.replace('.py','').split('/')[-2:]
+        if file_path != folder_path:
+            # skip __init__.py and other (maybe) additional scripts
+            continue
+
+        lines = open(path).readlines()
+
+        schemas = set()
+        source_count, bigbio_count = 0, 0
+        is_download_dataset = False
+        line_start = 0
+        regex = re.compile('[^a-zA-Z_0-9]')
+        for i, line in enumerate(lines):
+            if 'BigBioConfig(' in line:
+                line_start = i
+            elif 'schema=' in line: # Schema
+                # check description (manually checked this rule before and it works fine to filter other use of the word `schema` :p)
+                if 'description' not in lines[i-1]:
+                    continue
+
+                name = "?"
+                for prev_line in lines[line_start:i]:
+                    if 'name=' in prev_line:
+                        name = prev_line.split('name=')[1].replace("f'","").replace('f"','')
+                        name = regex.sub('', name)
+                        break
+
+                subset_id = "?"
+                for next_line in lines[i:i+5]:
+                    if 'subset_id=' in next_line:
+                        subset_id = next_line.split('subset_id=')[1].replace("f'","").replace('f"','')
+                        subset_id = regex.sub('', subset_id)
+                        break
+
+                schema = line.split('schema=')[1]
+                if schema[0] == '"':
+                    schemas.add((name, subset_id, schema[1:].split('"')[0]))
+                else:
+                    schema = schema.strip()[:-1].lower()
+                    if 'bigbio' in schema or 'source' in schema:
+                        schemas.add((name, subset_id, schema))
+
+                if 'source' in schema:
+                    source_count += 1
+                else:
+                    bigbio_count += 1
+            elif 'download_and_extract' in line: # Downlaod
+                is_download_dataset = True
+
+        datasets_meta.append({
+            'dataset_name': file_path,
+            'has_source': 'source' in schemas,
+            'has_bigbio': any(['bigbio' in schema for schema in schemas]),
+            'has_bigbio_kb': any(['bigbio_kb' in schema for schema in schemas]),
+            'has_bigbio_text': any(['bigbio_text' in schema for schema in schemas]),
+            'has_bigbio_qa': any(['bigbio_qa' in schema for schema in schemas]),
+            'has_bigbio_entailment': any(['bigbio_te' in schema for schema in schemas]),
+            'has_bigbio_text2text': any(['bigbio_t2t' in schema for schema in schemas]),
+            'has_bigbio_pairs': any(['bigbio_pairs' in schema for schema in schemas]),            
+            'is_download_dataset': is_download_dataset,
+            'source_schema_count': source_count,
+            'bigbio_schema_count': bigbio_count,
+            'schemas': list(schemas)
+        })
+    df = pd.DataFrame(datasets_meta)
+    return df
+
+def bigbio_ner_to_conll(sample):
+    passage = sample['passages'][0]['text'][0]
+    entities = sample['entities']
+    offset = 0
+
+    conll_data = []
+    for entity in sorted(entities, key=lambda e: e['offsets'][0][0]):
+        s_idx, e_idx = entity['offsets'][0][0] - offset, entity['offsets'][0][1] - offset
+        sentence = passage[:s_idx].strip().replace('\t',' ').replace('\n',' ')
+        for token in nlp.tokenizer(sentence):
+            conll_data.append((token.text, 'O'))
+        label = passage[s_idx:e_idx]
+        for token in nlp.tokenizer(label):
+            conll_data.append((token.text, entity['type']))
+        passage = passage[e_idx:]
+        offset += e_idx
+
+    if len(passage) > 0:
+        sentence = passage.strip().replace('\t',' ').replace('\n',' ')
+        for token in nlp.tokenizer(sentence):
+            conll_data.append((token.text, 'O'))
+
+    sample['conll'] = conll_data
+    return sample
+
+###
+# Dataset Wrapper
+###
 class SingleDataset:
     def __init__(self, data, name):
         self.data = data
         self.name = name
-
 
 
 def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
@@ -382,66 +514,50 @@ def get_all_coref_datasets() -> List[SingleDataset]:
 
 def get_all_ner_datasets() -> List[SingleDataset]:
     ner_datasets = []
+    meta_df = get_biodataset_metadata()
 
     for dataset_loader in tqdm(
             get_all_dataloaders_for_task(Tasks.NAMED_ENTITY_RECOGNITION),
             desc="Preparing NER datasets",
     ):
         dataset_name = Path(dataset_loader).with_suffix("").name
-        print(dataset_name)
 
-        # if "pubhealth" in dataset_name: # not sts
-        #     continue
-        
-        dataset = datasets.load_dataset(
-            str(dataset_loader), name=f"{dataset_name}_bigbio_pairs"
-        )
+        if dataset_name in ignored_datasets:
+            continue
 
-        def replace_(example):
-            example["text_1"] = example["text_1"].strip().replace("\t", " ").replace("\n", " ")
-            example["text_2"] = example["text_2"].strip().replace("\t", " ").replace("\n", " ")
-            return example
-
-        def prep_label_(example):
-            import math
-            example["label"] = round(float(example["label"]))
-            if dataset_name in ["minimayosrs", "mayosrs"]:
-                example["label"] -= 1
-
-            assert example["label"] >= 0, "Oh no"
-            
-            
-            if dataset_name == "biosses":
-                assert 0 <= example["label"] <= 4, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name in ["bio_simlex", "bio_sim_verb"]:
-                assert 0 <= example["label"] <= 10, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name == "ehr_rel":
-                assert 0 <= example["label"] <= 3, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name in ["minimayosrs", "mayosrs"]:
-                assert 0 <= example["label"] <= 9, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name == "mqp":
-                assert 0 <= example["label"] <= 1, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name == "umnsrs":
-                assert 0 <= example["label"] <= 1600, f"Oh no {dataset_name} {example['label']}"
-
-
-            return example
-
-        dataset = dataset.map(replace_)
-        dataset = dataset.map(prep_label_)
-        dataset = dataset.remove_columns(['id', "document_id"])
-        
-        sts_datasets.append(SingleDataset(dataset, name=dataset_name + "_sts"))
+        if dataset_name in dataset_to_name_subset_map:
+            for name, subset_id in dataset_to_name_subset_map[dataset_name]:
+                try:
+                    dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
+                    dataset = dataset.map(bigbio_ner_to_conll,
+                        remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations']
+                    )
+                    ner_datasets.append(SingleDataset(dataset, name=dataset_name + "_ner"))
+                except Exception as ve:
+                    print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")            
+        else:
+            for name, subset_id, schema in meta_df.loc[meta_df['dataset_name'] == dataset_name, 'schemas'].values[0]:
+                try:
+                    if 'bigbio_kb' not in schema:
+                        continue
+                    dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
+                    dataset = dataset.map(bigbio_ner_to_conll, 
+                        remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations']
+                    )
+                    ner_datasets.append(SingleDataset(dataset, name=dataset_name + "_ner"))
+                except Exception as ve:
+                    print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")
 
         if DEBUG:
             break
 
-    return sts_datasets
+    return ner_datasets
 
 if __name__ == "__main__":
-    re_datasets = get_all_re_datasets()
-    coref_datasets = get_all_coref_datasets()
-    classification_datasets = get_all_classification_datasets()
+    # re_datasets = get_all_re_datasets()
+    # coref_datasets = get_all_coref_datasets()
+    # classification_datasets = get_all_classification_datasets()
+    ner_datasets = get_all_ner_datasets()
 
     config = {}
 
@@ -498,6 +614,40 @@ if __name__ == "__main__":
 
                 f.write(text + "\t" + label + "\n")
 
+    for dataset in tqdm(ner_datasets):
+        config[dataset.name] = {
+            "train_data_path": str((out / dataset.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
+            "word_idx": 0,
+            "tasks": {
+                dataset.name: {
+                    "column_idx": 1,
+                    "task_type": "seq"
+                }
+            }
+        }
+
+        ### Generate validation split if not available
+        if not "valid" in dataset.data:
+            train_valid = dataset.data["train"].train_test_split(test_size=0.1)
+            dataset.data = DatasetDict({
+                "train": train_valid["train"],
+                "valid": train_valid["test"],
+            })
+
+        ### Write train file
+        with (out / dataset.name).with_suffix(".train").open("w") as f:
+            for example in dataset.data["train"]:
+                for word, label in example['conll']:
+                    f.write(word + "\t" + label + "\n")
+                f.write( "\n")
+
+        ### Write validation file
+        with (out / dataset.name).with_suffix(".valid").open("w") as f:
+            for example in dataset.data["valid"]:
+                for word, label in example['conll']:
+                    f.write(word + "\t" + label + "\n")
+                f.write( "\n")
 
     ## Write Machamp config
     fname = "machamp/configs/bigbio_debug.json" if DEBUG else "machamp/configs/bigbio_full.json"
