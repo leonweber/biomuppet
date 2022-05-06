@@ -11,25 +11,25 @@ from inspect import getmembers
 
 import datasets
 from datasets import DatasetDict
-from flair.tokenization import SegtokSentenceSplitter
+from flair.tokenization import SegtokSentenceSplitter, SpaceTokenizer
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import glob
 import re
-from spacy.lang.en import English
+import multiprocessing
 
 import bigbio
 from bigbio.utils.constants import Tasks
 
 DEBUG = False
-nlp = English() # Global SpaCy tokenizer
+tokenizer = SpaceTokenizer()
 
-# Skip non-english and local dataset
+# Skip non-english, local dataset, and problematic dataset
 ignored_datasets = [
     'n2c2_2018_track2', 'n2c2_2018_track1', 'n2c2_2011', 'n2c2_2010',
     'n2c2_2009', 'n2c2_2008', 'n2c2_2006_smokers', 'n2c2_2006_deid',
-    'psytar', 'swedish_medical_ner', 'quaero', 'pho_ner', 'ctebmsp'
+    'psytar', 'swedish_medical_ner', 'quaero', 'pho_ner', 'ctebmsp', 'codiesp'
 ]
 
 # Dataset to name & subset_id mapping for special cases datasets
@@ -48,8 +48,14 @@ dataset_to_name_subset_map = {
         ('genetaggold_bigbio_kb', 'genetaggold'),
         ('genetagcorrect_bigbio_kb', 'genetagcorrect')
     ],
-    'chebi_nactem': ['chebi_nactem_abstr_ann2_bigbio_kb', 'chebi_nactem_fullpaper_bigbio_kb'],
-    'dian_iber_eval_en_bigbio_kb': ['diann_iber_eval_en_bigbio_kb']
+    'chebi_nactem': [
+        ('chebi_nactem_abstr_ann1_bigbio_kb', 'chebi_nactem_abstr_ann1'), 
+        ('chebi_nactem_abstr_ann2_bigbio_kb', 'chebi_nactem_abstr_ann2'), 
+        ('chebi_nactem_fullpaper_bigbio_kb', 'chebi_nactem_fullpaper')
+    ],
+    'dian_iber_eval_en_bigbio_kb': [('diann_iber_eval_en_bigbio_kb', 'diann_iber_eval_en')],
+    'pubtator_central': [('pubtator_central_sample_bigbio_kb', 'pubtator_central')],
+    'codiesp': [('codiesp_X_bigbio_kb', 'codiesp_x')]
 }
 
 def overlaps(a, b):
@@ -348,7 +354,7 @@ def get_biodataset_metadata():
     return df
 
 def bigbio_ner_to_conll(sample):
-    passage = sample['passages'][0]['text'][0]
+    passage = ' '.join([passage['text'][0] for passage in sample['passages']])
     entities = sample['entities']
     offset = 0
 
@@ -356,18 +362,18 @@ def bigbio_ner_to_conll(sample):
     for entity in sorted(entities, key=lambda e: e['offsets'][0][0]):
         s_idx, e_idx = entity['offsets'][0][0] - offset, entity['offsets'][0][1] - offset
         sentence = passage[:s_idx].strip().replace('\t',' ').replace('\n',' ')
-        for token in nlp.tokenizer(sentence):
-            conll_data.append((token.text, 'O'))
+        for token in tokenizer.tokenize(sentence):
+            conll_data.append((token, 'O'))
         label = passage[s_idx:e_idx]
-        for token in nlp.tokenizer(label):
-            conll_data.append((token.text, entity['type']))
+        for i, token in enumerate(tokenizer.tokenize(label)):
+            conll_data.append((token, f"{'B' if i == 0 else 'I'}-{entity['type']}"))
         passage = passage[e_idx:]
         offset += e_idx
 
     if len(passage) > 0:
         sentence = passage.strip().replace('\t',' ').replace('\n',' ')
-        for token in nlp.tokenizer(sentence):
-            conll_data.append((token.text, 'O'))
+        for token in tokenizer.tokenize(sentence):
+            conll_data.append((token, 'O'))
 
     sample['conll'] = conll_data
     return sample
@@ -516,10 +522,10 @@ def get_all_ner_datasets() -> List[SingleDataset]:
     ner_datasets = []
     meta_df = get_biodataset_metadata()
 
-    for dataset_loader in tqdm(
+    for idx, dataset_loader in enumerate(tqdm(
             get_all_dataloaders_for_task(Tasks.NAMED_ENTITY_RECOGNITION),
             desc="Preparing NER datasets",
-    ):
+    )):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
         if dataset_name in ignored_datasets:
@@ -530,7 +536,9 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                 try:
                     dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
                     dataset = dataset.map(bigbio_ner_to_conll,
-                        remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations']
+                        remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations'],
+                        load_from_cache_file=not DEBUG,
+                        num_proc=multiprocessing.cpu_count() * 2
                     )
                     ner_datasets.append(SingleDataset(dataset, name=dataset_name + "_ner"))
                 except Exception as ve:
@@ -542,21 +550,24 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                         continue
                     dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
                     dataset = dataset.map(bigbio_ner_to_conll, 
-                        remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations']
+                        remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations'],
+                        load_from_cache_file=not DEBUG,
+                        num_proc=multiprocessing.cpu_count() * 2
                     )
                     ner_datasets.append(SingleDataset(dataset, name=dataset_name + "_ner"))
                 except Exception as ve:
                     print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")
 
         if DEBUG:
-            break
+            if idx >= 10:
+                break
 
     return ner_datasets
 
 if __name__ == "__main__":
-    # re_datasets = get_all_re_datasets()
-    # coref_datasets = get_all_coref_datasets()
-    # classification_datasets = get_all_classification_datasets()
+    re_datasets = get_all_re_datasets()
+    coref_datasets = get_all_coref_datasets()
+    classification_datasets = get_all_classification_datasets()
     ner_datasets = get_all_ner_datasets()
 
     config = {}
