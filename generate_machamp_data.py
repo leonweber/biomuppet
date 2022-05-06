@@ -6,12 +6,13 @@ from collections import defaultdict
 from functools import partial
 from pathlib import Path
 from typing import List
+from nltk.tokenize import WordPunctTokenizer
 import importlib.util
 from inspect import getmembers
 
 import datasets
 from datasets import DatasetDict
-from flair.tokenization import SegtokSentenceSplitter
+from flair.tokenization import SegtokSentenceSplitter, SpacySentenceSplitter
 from tqdm import tqdm
 import numpy as np
 
@@ -40,6 +41,20 @@ class DatasetMetaInformation:
 def is_valid_re(example) -> bool:
     text = example["text"]
     return text.count("$") >= 2 and text.count("@") >= 2
+
+def is_valid_qa(example) -> bool:
+    """
+    Return non-empty text
+    :param example:
+    :return:
+    """
+    if "text" in example.keys():
+        text = example["text"]
+        return len(text) >=1
+    else:
+        sequence = example["sequence"]
+        return len(sequence) >=1
+
 
 def insert_consistently(offset, insertion, text, starts, ends):
     new_text = text[:offset] + insertion + text[offset:]
@@ -153,6 +168,16 @@ def insert_pair_markers(text, head, tail, passage_offset, mask_entities=True):
 
     return text
 
+def is_seq_answer(seq, answer):
+    """
+    Returns boolean if there's a match between seq and answer
+    :param seq:
+    :param answer:
+    :return:
+    """
+    if seq.strip().lower() == answer.strip().lower():
+        return True
+
 
 def coref_to_re(example):
     example["relations"] = []
@@ -206,103 +231,106 @@ def re_to_classification(example, mask_entities=True):
 
 #TODO: Transform QA to classification
 def qa_to_classification(example, mask_entities=True):
-    new_example = {"text": [""], "labels": [[""]]}
-    relations = defaultdict(set)
-    for relation in example["relations"][0]:
-        relations[(relation["arg1_id"], relation["arg2_id"])].add(relation["type"])
-        relations[(relation["arg2_id"], relation["arg1_id"])].add(relation["type"])
-    for passage in example["passages"][0]:
-        passage_range = range(*passage["offsets"][0])
-
-        passage_entities = []
-        for entity in example["entities"][0]:
-            start = entity["offsets"][0][0]
-            end = entity["offsets"][-1][1]
-            if start in passage_range and (end - 1) in passage_range:
-                passage_entities.append(entity)
-
-        for i, head in enumerate(passage_entities):
-            for tail in passage_entities[i:]:
-                if head == tail:
-                    continue
-                text = insert_pair_markers(
-                    passage["text"][0],
-                    head=head,
-                    tail=tail,
-                    passage_offset=passage_range[0],
-                    mask_entities=mask_entities
-                )
-                labels = relations[(head["id"], tail["id"])]
-                new_example["text"].append(text)
-                new_example["labels"].append(labels)
-
-    return new_example
+    """
+     Bigbio qa structure
+        "id": datasets.Value("string"),
+        "question_id": datasets.Value("string"),
+        "document_id": datasets.Value("string"),
+        "question": datasets.Value("string"),
+        "type": datasets.Value("string"),
+        "choices": [datasets.Value("string")],
+        "context": datasets.Value("string"),
+        "answer": datasets.Sequence(datasets.Value("string")),
+    1. Assert type =="yesorno"
+    2. Format text: context[sep]question
+    3. Format labels: as label
+    :param example:
+    :param mask_entities:
+    :return:
+    """
+    if example["type"][0] != "yesno":
+        return
+    else:
+        new_example = {"text": [""], "labels": [[""]]}
+        text = example["context"][0].strip().replace("\t", " ").replace("\n", " ") + " " + \
+               "[SEP]" + " " + example["question"][0].strip().replace("\t", " ").replace("\n", " ")
+        labels = [example["answer"][0][0].strip().replace("\t", " ").replace("\n", " ")]
+        new_example["text"].append(text)
+        new_example["labels"].append(labels)
+        return new_example
 
 #TODO: transforming QA to multiple choice
 def qa_to_sequence(example, mask_entities=True):
-    new_example = {"text": [""], "labels": [[""]]}
-    relations = defaultdict(set)
-    for relation in example["relations"][0]:
-        relations[(relation["arg1_id"], relation["arg2_id"])].add(relation["type"])
-        relations[(relation["arg2_id"], relation["arg1_id"])].add(relation["type"])
-    for passage in example["passages"][0]:
-        passage_range = range(*passage["offsets"][0])
+    """
+     Bigbio qa structure
+        "id": datasets.Value("string"),
+        "question_id": datasets.Value("string"),
+        "document_id": datasets.Value("string"),
+        "question": datasets.Value("string"),
+        "type": datasets.Value("string"),
+        "choices": [datasets.Value("string")],
+        "context": datasets.Value("string"),
+        "answer": datasets.Sequence(datasets.Value("string")),
+    1. Assert type =="multiple choice"
+    2. Format sequence: tokens of the words (separated by empty line between samples)
+    3. Format labels: [] or [answer]
+    :param example:
+    :param mask_entities:
+    :return:
+    """
+    if example["type"][0] != "multiple_choice":
+        return
+    else:
+        new_example = {"sequence": [[""]], "labels": [[""]]}
+        tokenizer = WordPunctTokenizer()
+        context_seq = tokenizer.tokenize(example["context"][0].lower().strip().replace("\t", " ").replace("\n", " "))
+        question_seq = tokenizer.tokenize(example["question"][0].lower().strip().replace("\t", " ").replace("\n", " "))
+        sequence = context_seq + question_seq
 
-        passage_entities = []
-        for entity in example["entities"][0]:
-            start = entity["offsets"][0][0]
-            end = entity["offsets"][-1][1]
-            if start in passage_range and (end - 1) in passage_range:
-                passage_entities.append(entity)
-
-        for i, head in enumerate(passage_entities):
-            for tail in passage_entities[i:]:
-                if head == tail:
-                    continue
-                text = insert_pair_markers(
-                    passage["text"][0],
-                    head=head,
-                    tail=tail,
-                    passage_offset=passage_range[0],
-                    mask_entities=mask_entities
-                )
-                labels = relations[(head["id"], tail["id"])]
-                new_example["text"].append(text)
-                new_example["labels"].append(labels)
-
+        # Look for exact matches firstly:
+        ans =example['answer'][0][0].strip().replace("\t", " ").replace("\n", " ")
+        if ans in sequence:
+            labels = [["answer"] if (ans == seq) else [""] for seq in sequence]
+            new_example["sequence"].extend([[seq] for seq in sequence])
+            new_example["labels"].extend(labels)
+            # Add new line to differentiate examples
+            new_example["sequence"].extend([["\n"]])
+            new_example["labels"].extend([["\n"]])
+        # Handle soft-matching case
+        else:
+            return
+            # Implement soft-matching
     return new_example
 
 #TODO: Transform QA to machamp
 def qa_to_machamp(example, mask_entities=True):
-    new_example = {"text": [""], "labels": [[""]]}
-    relations = defaultdict(set)
-    for relation in example["relations"][0]:
-        relations[(relation["arg1_id"], relation["arg2_id"])].add(relation["type"])
-        relations[(relation["arg2_id"], relation["arg1_id"])].add(relation["type"])
-    for passage in example["passages"][0]:
-        passage_range = range(*passage["offsets"][0])
+    """
+    Bigbio qa structure
+        "id": datasets.Value("string"),
+        "question_id": datasets.Value("string"),
+        "document_id": datasets.Value("string"),
+        "question": datasets.Value("string"),
+        "type": datasets.Value("string"),
+        "choices": [datasets.Value("string")],
+        "context": datasets.Value("string"),
+        "answer": datasets.Sequence(datasets.Value("string")),
+    1. check type
+        - if yerno call qa_to_classification
+        - if multiple choice call qa_to_sequence
 
-        passage_entities = []
-        for entity in example["entities"][0]:
-            start = entity["offsets"][0][0]
-            end = entity["offsets"][-1][1]
-            if start in passage_range and (end - 1) in passage_range:
-                passage_entities.append(entity)
+    :param example:
+    :param mask_entities:
+    :return:
+    """
+    if example['type'][0] == "yesno":
+        new_example = qa_to_classification(example)
 
-        for i, head in enumerate(passage_entities):
-            for tail in passage_entities[i:]:
-                if head == tail:
-                    continue
-                text = insert_pair_markers(
-                    passage["text"][0],
-                    head=head,
-                    tail=tail,
-                    passage_offset=passage_range[0],
-                    mask_entities=mask_entities
-                )
-                labels = relations[(head["id"], tail["id"])]
-                new_example["text"].append(text)
-                new_example["labels"].append(labels)
+    elif example['type'][0] == "multiple_choice":
+        new_example = qa_to_sequence(example)
+
+    else:
+        print("Currently supporting yesno QA and multiple_choice")
+        return
 
     return new_example
 
@@ -530,41 +558,65 @@ def get_all_qa_datasets() -> List[SingleDataset]:
     ):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
-        if "mediqa_data" in dataset_name or "biology_how_why_corpus" in dataset_name:
+        if (
+                ("mediqa_qa" == dataset_name)  # empty context
+                or ("biology_how_why_corpus" == dataset_name)  # empty context
+                or ("med_qa" == dataset_name)  # non-English
+                or ("bioasq_task_b" == dataset_name)  # local dataset
+        ):
             continue
 
-        try:
-            dataset = datasets.load_dataset(
-                str(dataset_loader), name=f"{dataset_name}_bigbio_qa"
+        # #Testing to separate classification out
+        # elif (
+        #         ("biomrc" == dataset_name)
+        #         or ("sciq" == dataset_name)
+        #         or ("medhop" == dataset_name)
+        #         or ("bioasq_task_b" == dataset_name ) # local dataset excluded for now
+        # ):
+        #     continue
+
+        #Testing to separate sequence out
+        elif (
+                ("pubmed_qa" == dataset_name)
+        ):
+            continue
+
+        module = datasets.load.dataset_module_factory(str(dataset_loader))
+        builder_cls = datasets.load.import_main_class(module.module_path)
+        all_bigbio_config_names = [el.name for el in builder_cls.BUILDER_CONFIGS if
+                            'bigbio_qa' in el.name and 'unlabel' not in el.name]
+        for bigbio_config_name in all_bigbio_config_names:
+            try:
+
+                dataset = datasets.load_dataset(
+                    str(dataset_loader), name=bigbio_config_name
+                )
+            except ValueError as ve:
+                print(f"Skipping {dataset_loader} because of {ve}")
+                continue
+            dataset = dataset.map(
+                qa_to_machamp,
+                batched=True,
+                batch_size=1,
+                remove_columns=dataset["train"].column_names,
             )
-        except ValueError as ve:
-            print(f"Skipping {dataset_loader} because of {ve}")
-            continue
-        # COMPLETE THIS PART FOR QA
-
-        dataset = dataset.map(split_sentences)
-        dataset = dataset.map(coref_to_re).map(
-            partial(re_to_classification, mask_entities=False),
-            batched=True,
-            batch_size=1,
-            remove_columns=dataset["train"].column_names,
-        )
-        # COMPLETE THIS PART
-        dataset = dataset.filter(is_valid_re)
-        for split_name, split in dataset.items():
-            dataset[split_name] = subsample_negative(split)
-
-        qa_datasets.append(SingleDataset(dataset, name=dataset_name + "_qa"))
-
+            dataset = dataset.filter(is_valid_qa)
+            for split_name, split in dataset.items():
+                dataset[split_name] = subsample_negative(split)
+            #TODO: write solution for meta information
+            meta = get_classification_meta(dataset=dataset, name=bigbio_config_name)
+            qa_datasets.append(SingleDataset(dataset, meta=meta))
+        print(qa_datasets)
         if DEBUG:
             break
 
     return qa_datasets
 
 if __name__ == "__main__":
-    re_datasets = get_all_re_datasets()
-    coref_datasets = get_all_coref_datasets()
-    classification_datasets = get_all_classification_datasets()
+    # re_datasets = get_all_re_datasets()
+    # coref_datasets = get_all_coref_datasets()
+    # classification_datasets = get_all_classification_datasets()
+    qa_datasets = get_all_qa_datasets()
 
     config = {}
 
@@ -587,7 +639,7 @@ if __name__ == "__main__":
                 }
             }
         }
-
+    ### ADD qa config (should capture both classification and sequence)
 
         ### Generate validation split if not available
         if not "valid" in dataset.data:

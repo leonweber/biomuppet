@@ -5,3 +5,4 @@ tqdm
 torchmetrics
 wandb
 flair
+nltk
