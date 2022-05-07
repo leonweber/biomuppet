@@ -29,8 +29,7 @@ tokenizer = SpaceTokenizer()
 ignored_datasets = [
     'n2c2_2018_track2', 'n2c2_2018_track1', 'n2c2_2011', 'n2c2_2010',
     'n2c2_2009', 'n2c2_2008', 'n2c2_2006_smokers', 'n2c2_2006_deid',
-    'psytar', 'swedish_medical_ner', 'quaero', 'pho_ner', 'ctebmsp', 'codiesp',
-    'pubtator_central'
+    'psytar', 'swedish_medical_ner', 'quaero', 'pho_ner', 'ctebmsp', 'codiesp'
 ]
 
 # Dataset to name & subset_id mapping for special cases datasets
