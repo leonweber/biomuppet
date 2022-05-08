@@ -4,4 +4,4 @@ transformers>=4.18.0
 tqdm
 torchmetrics
 wandb
-flair
+flair>=0.11

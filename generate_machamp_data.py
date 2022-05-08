@@ -246,6 +246,26 @@ def re_to_classification(example, mask_entities=True):
     return new_example
 
 
+def get_classification_meta(dataset, name):
+    is_multilabel = False
+    label_to_idx = {"None": 0}
+    for labels in dataset['train']['labels']:
+        if len(labels) > 1:
+            is_multilabel = True
+        for label in labels:
+            if label not in label_to_idx:
+                label_to_idx[label] = len(label_to_idx)
+    idx_to_label = {v: k for k, v in label_to_idx.items()}
+    task_type = "multilabel_clf" if is_multilabel else "clf"
+
+    return DatasetMetaInformation(
+        id_to_label=idx_to_label,
+        label_to_id=label_to_idx,
+        type=task_type,
+        name=name
+    )
+
+
 def split_sentences(example):
     new_passages = []
 
@@ -489,9 +509,18 @@ def bigbio_ner_to_conll(sample):
 # Dataset Wrapper
 ###
 class SingleDataset:
-    def __init__(self, data, name):
+    def __init__(self, data, meta, split="train"):
+        self.split = split
         self.data = data
-        self.name = name
+        self.meta = meta
+
+    def __getitem__(self, item):
+        example = self.data[self.split][item]
+        example["meta"] = self.meta
+        return example
+
+    def __len__(self):
+        return len(self.data[self.split])
 
 
 def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
@@ -507,13 +536,12 @@ def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
 
     return dataset_loaders_for_task
 
+
 def get_all_re_datasets() -> List[SingleDataset]:
     re_datasets = []
 
-    for dataset_loader in tqdm(
-            get_all_dataloaders_for_task(Tasks.RELATION_EXTRACTION),
-            desc="Preparing RE datasets",
-    ):
+    dataset_loaders = get_all_dataloaders_for_task(Tasks.RELATION_EXTRACTION)
+    for dataset_loader in tqdm(dataset_loaders, desc="Preparing RE datasets"):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
         if (
@@ -543,13 +571,15 @@ def get_all_re_datasets() -> List[SingleDataset]:
         )
         dataset = dataset.filter(is_valid_re)
 
-        for split_name, split in dataset.items():
-            dataset[split_name] = subsample_negative(split)
+        # for split_name, split in dataset.items():
+        #     dataset[split_name] = subsample_negative(split)
 
-        re_datasets.append(SingleDataset(data=dataset, name=dataset_name + "_RE"))
+        meta = get_classification_meta(dataset=dataset, name=dataset_name + "_RE")
+        re_datasets.append(SingleDataset(data=dataset, meta=meta))
 
-        if DEBUG:
+        if DEBUG and len(re_datasets) >= 3:
             break
+
 
     return re_datasets
 
@@ -567,6 +597,7 @@ def get_all_classification_datasets() -> List[SingleDataset]:
                 "cantemist" in dataset_name
                 or "pharmaconer" in dataset_name
                 or "hallmarks" in dataset_name
+                or "nlmchem" in dataset_name
         ):
             continue
 
@@ -574,9 +605,10 @@ def get_all_classification_datasets() -> List[SingleDataset]:
             dataset = datasets.load_dataset(
                 str(dataset_loader), name=f"{dataset_name}_bigbio_text"
             )
-            classification_datasets.append(SingleDataset(data=dataset, name=dataset_name + "_classification"))
+            meta = get_classification_meta(dataset=dataset, name=dataset_name + "_TEXT")
+            classification_datasets.append(SingleDataset(data=dataset, meta=meta))
 
-            if DEBUG:
+            if DEBUG and len(classification_datasets) >= 3:
                 break
 
         except (ValueError, ImportError) as err:
@@ -615,15 +647,77 @@ def get_all_coref_datasets() -> List[SingleDataset]:
         )
 
         dataset = dataset.filter(is_valid_re)
-        for split_name, split in dataset.items():
-            dataset[split_name] = subsample_negative(split)
+        # for split_name, split in dataset.items():
+        #     dataset[split_name] = subsample_negative(split)
+        meta = get_classification_meta(dataset=dataset, name=dataset_name + "_COREF")
+        coref_datasets.append(SingleDataset(data=dataset, meta=meta))
 
-        coref_datasets.append(SingleDataset(dataset, name=dataset_name + "_coref"))
+
+        if DEBUG:
+            break
+        
+    return coref_datasets
+
+def get_all_sts_datasets() -> List[SingleDataset]:
+    sts_datasets = []
+
+    for dataset_loader in tqdm(
+            get_all_dataloaders_for_task(Tasks.SEMANTIC_SIMILARITY),
+            desc="Preparing STS datasets",
+    ):
+        dataset_name = Path(dataset_loader).with_suffix("").name
+
+        if "pubhealth" in dataset_name: # not sts but classification fixed in #545 (not yet merged)
+            continue
+        elif "bio_simlex" in dataset_name: # label contains \n fixed in #541 (not yet merged)
+            continue
+        elif "umnsrs" in dataset_name: # mayor flaws (not downloadable) fixed in #538 (not yet merged)
+            continue
+        
+
+        
+        dataset = datasets.load_dataset(
+            str(dataset_loader), name=f"{dataset_name}_bigbio_pairs"
+        )
+
+        def replace_(example):
+            example["text_1"] = example["text_1"].strip().replace("\t", " ").replace("\n", " ")
+            example["text_2"] = example["text_2"].strip().replace("\t", " ").replace("\n", " ")
+            return example
+
+        def label_asserts_(example):
+
+            if dataset_name == "mqp":
+                label = int(example["label"])
+            else:
+                label = float(example["label"])
+
+            assert label >= 0, "Oh no"
+
+            # all datasets are range, except mqp (0/1)
+            if dataset_name == "biosses":
+                assert 0 <= label <= 4, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name in ["bio_simlex", "bio_sim_verb"]:
+                assert 0 <= label <= 10, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "ehr_rel":
+                assert 0 <= label <= 3, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name in ["minimayosrs", "mayosrs"]:
+                assert 1 <= label <= 10, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "mqp":
+                assert label == 0 or label== 1, f"Oh no {dataset_name} {example['label']}"
+            elif dataset_name == "umnsrs":
+                assert 0 <= label <= 1600, f"Oh no {dataset_name} {example['label']}"
+
+        dataset = dataset.map(replace_)
+        dataset = dataset.map(label_asserts_)
+        dataset = dataset.remove_columns(['id', "document_id"])
+        
+        sts_datasets.append(SingleDataset(dataset, name=dataset_name + "_sts"))
 
         if DEBUG:
             break
 
-    return coref_datasets
+    return sts_datasets
 
 def get_all_ner_datasets() -> List[SingleDataset]:
     ner_datasets = []
@@ -666,7 +760,7 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                     print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")
 
         if DEBUG:
-            if idx >= 25:
+            if idx >= 5:
                 break
 
     return ner_datasets
@@ -676,6 +770,7 @@ if __name__ == "__main__":
     coref_datasets = get_all_coref_datasets()
     classification_datasets = get_all_classification_datasets()
     ner_datasets = get_all_ner_datasets()
+    sts_datasets = get_all_sts_datasets()
 
     config = {}
 
@@ -709,7 +804,7 @@ if __name__ == "__main__":
             })
 
         ### Write train file
-        with (out / dataset.name).with_suffix(".train").open("w") as f:
+        with (out / dataset.name).with_suffix(".train").open("w", encoding="utf8") as f:
             for example in dataset.data["train"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
@@ -721,7 +816,7 @@ if __name__ == "__main__":
                 f.write(text + "\t" + label + "\n")
 
         ### Write validation file
-        with (out / dataset.name).with_suffix(".valid").open("w") as f:
+        with (out / dataset.name).with_suffix(".valid").open("w", encoding="utf8") as f:
             for example in dataset.data["valid"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
@@ -748,14 +843,14 @@ if __name__ == "__main__":
                 }
             }
         }
-
+        
         ### Generate validation split if not available            
         if not "valid" in dataset.data:
             train_valid = dataset.data["train"].train_test_split(test_size=0.1, seed=0)
             dataset.data = DatasetDict({
                 "train": train_valid["train"],
                 "valid": train_valid["test"],
-            })
+            })            
 
         ### Write train file
         with (out / dataset.name).with_suffix(".train").open("w") as f:
@@ -770,6 +865,31 @@ if __name__ == "__main__":
                 for word, label in example['conll']:
                     f.write(word + "\t" + label + "\n")
                 f.write( "\n")
+    
+    for dataset in tqdm(sts_datasets):
+        # WRONG, none of them are classification, except mqp (0/1 dissimilar/similar)
+        config[dataset.name] = {
+            "train_data_path": str((out / dataset.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
+            "sent_idxs": [0,1],
+            "tasks": {
+                dataset.name: {
+                    "column_idx": 2,
+                    "task_type": "classification"
+                }
+            }
+        }
+
+        ### Generate validation split if not available
+        if not "valid" in dataset.data:
+            train_valid = dataset.data["train"].train_test_split(test_size=0.1)
+            dataset.data = DatasetDict({
+                "train": train_valid["train"],
+                "valid": train_valid["test"],
+            })
+        
+        dataset.data["train"].to_csv((out / dataset.name).with_suffix(".train"), sep="\t", index=None, header=None)
+        dataset.data["valid"].to_csv((out / dataset.name).with_suffix(".valid"), sep="\t", index=None, header=None)
 
     ## Write Machamp config
     fname = "machamp/configs/bigbio_debug.json" if DEBUG else "machamp/configs/bigbio_full.json"

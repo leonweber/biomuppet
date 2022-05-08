@@ -1,6 +1,8 @@
 import argparse
+import copy
 import dataclasses
 import itertools
+import math
 import sys
 from dataclasses import dataclass
 import random
@@ -10,9 +12,9 @@ import importlib
 
 import numpy as np
 import datasets
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from typing import Dict, List, Optional, Tuple
 
 import torch
@@ -25,12 +27,38 @@ from transformers.models.auto.tokenization_auto import AutoTokenizer
 
 from bigbio.utils.constants import Tasks
 
+from generate_machamp_data import subsample_negative, is_valid_re, get_all_re_datasets, \
+    get_all_classification_datasets, get_all_coref_datasets
 
 pl.seed_everything(42)
 
+NUM_GPUS = 4
+GRADIENT_ACCUMULATION = 8
+BATCH_SIZE = 32
+MAX_STEPS = 100000 * GRADIENT_ACCUMULATION
+
+def print_average_task_mixing(dataloader, num_samples=1):
+    avg_tasks_per_epoch = []
+    for _ in trange(num_samples, desc="Calculating task mixing"):
+        num_tasks_per_batch = []
+        batches_per_gpu = [[] for _ in range(NUM_GPUS)]
+        for idx_batch, batch in enumerate(dataloader):
+            idx_gpu = idx_batch % NUM_GPUS
+            batches_per_gpu[idx_gpu].append(batch)
+
+        tasks = set()
+        for i, batches in enumerate(zip(*batches_per_gpu)):
+            for batch in batches:
+                tasks.update(set(meta.name for meta in batch["meta"]))
+            if i % GRADIENT_ACCUMULATION == 0:
+                num_tasks_per_batch.append(len(tasks))
+                tasks = set()
+        avg_tasks_per_epoch.append(np.mean(num_tasks_per_batch))
+
+    print(avg_tasks_per_epoch)
+
 
 def classification_loss(logits, labels, meta):
-    # TODO scale loss so that losses for diferent tasks are all on the same scale
     assert logits.ndim == 2
     cls_logit = logits[0]
     label_tensor = torch.zeros(len(meta.label_to_id))
@@ -40,8 +68,11 @@ def classification_loss(logits, labels, meta):
         label = "None"
 
     label_tensor[meta.label_to_id[label]] = 1
+    loss = nn.CrossEntropyLoss()(cls_logit.unsqueeze(0), label_tensor.to(logits.device).unsqueeze(0))
+    if len(meta.label_to_id) > 1:
+        loss /= math.log(len(meta.label_to_id))
 
-    return nn.CrossEntropyLoss()(cls_logit.unsqueeze(0), label_tensor.to(logits.device).unsqueeze(0))
+    return loss
 
 
 def multilabel_classification_loss(logits, labels, meta):
@@ -80,100 +111,6 @@ class DatasetMetaInformation:
     def to(self, device):
         return self
 
-def insert_consistently(offset, insertion, text, starts, ends):
-    new_text = text[:offset] + insertion + text[offset:]
-    new_starts = starts.copy()
-    new_ends = ends.copy()
-    new_starts[starts >= offset] += len(insertion)
-    new_ends[ends >= offset] += len(insertion)
-
-    return new_text, new_starts, new_ends
-
-
-def delete_consistently(from_idx, to_idx , text, starts, ends):
-    assert to_idx >= from_idx
-    new_text = text[:from_idx] + text[to_idx:]
-    new_starts = starts.copy()
-    new_ends = ends.copy()
-    new_starts[(from_idx <= starts) & (starts <= to_idx)] = from_idx
-    new_ends[(from_idx <= ends) & (ends <= to_idx)] = from_idx
-    new_starts[starts > to_idx] -= (to_idx - from_idx)
-    new_ends[ends > to_idx] -= (to_idx - from_idx)
-
-    return new_text, new_starts, new_ends
-
-
-def insert_pair_markers(text, head, tail, passage_offset):
-    head_start_marker = "[HEAD-S]"
-    tail_start_marker = "[TAIL-S]"
-    head_end_marker = "[HEAD-E]"
-    tail_end_marker = "[TAIL-E]"
-
-    starts = (
-            np.array([head["offsets"][0][0], tail["offsets"][0][0]]) - passage_offset
-    )
-    ends = (
-            np.array([head["offsets"][-1][-1], tail["offsets"][-1][-1]]) - passage_offset
-    )
-
-    text, starts, ends = insert_consistently(
-        offset=starts[0], text=text, insertion=head_start_marker, starts=starts, ends=ends
-    )
-    text, starts, ends = insert_consistently(
-        offset=ends[0], text=text, insertion=head_end_marker, starts=starts, ends=ends
-    )
-    text, starts, ends = insert_consistently(
-        offset=starts[1], text=text, insertion=tail_start_marker, starts=starts, ends=ends
-    )
-    text, starts, ends = insert_consistently(
-        offset=ends[1], text=text, insertion=tail_end_marker, starts=starts, ends=ends
-    )
-
-    return text
-
-def re_to_classification(example):
-    new_example = {"nested_texts": [], "nested_labels": []}
-    relations = defaultdict(set)
-    for relation in example["relations"]:
-        relations[(relation["arg1_id"], relation["arg2_id"])].add(relation["type"])
-    for passage in example["passages"]:
-        passage_range = range(*passage["offsets"][0])
-
-        passage_entities = []
-        for entity in example["entities"]:
-            start = entity["offsets"][0][0]
-            end = entity["offsets"][-1][1]
-            if start in passage_range and (end - 1) in passage_range:
-                passage_entities.append(entity)
-
-        for head in passage_entities:
-            for tail in passage_entities:
-                text = insert_pair_markers(passage["text"][0], head=head, tail=tail,
-                                           passage_offset=passage_range[0])
-                labels = relations[(head["id"], tail["id"])]
-                labels = labels | set(rel + "_r" for rel in relations[(tail["id"], head["id"])])
-                new_example["nested_texts"].append(text)
-                new_example["nested_labels"].append(labels)
-
-    return new_example
-
-def split_sentences(example):
-    new_passages = []
-
-    splitter = SegtokSentenceSplitter()
-    for passage in example["passages"]:
-        for i, sentence in enumerate(splitter.split(passage["text"][0])):
-            new_passages.append({
-                "id": passage["id"] + ".s" + str(i),
-                "type": passage["type"],
-                "text": [sentence.to_original_text()],
-                "offsets": [[passage["offsets"][0][0] + sentence.start_pos, passage["offsets"][0][0] + sentence.end_pos]]
-            })
-
-    example["passages"] = new_passages
-
-    return example
-
 
 @dataclass
 class MultitaskClassifierOutput(transformers.file_utils.ModelOutput):
@@ -183,113 +120,6 @@ class MultitaskClassifierOutput(transformers.file_utils.ModelOutput):
     attentions: Optional[Tuple[torch.FloatTensor]] = None
 
 
-class SingleDataset:
-    def __init__(self, data, meta):
-        self.data = data
-        self.meta = meta
-
-    def __getitem__(self, item):
-        example = self.data[item]
-        example["meta"] = self.meta
-        return example
-
-    def __len__(self):
-        return len(self.data)
-
-
-def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
-    dataset_loaders_for_task = []
-
-    all_dataset_loaders = list(Path("biodatasets").glob("*/*py"))
-    for dataset_loader in all_dataset_loaders:
-        try:
-            module = str(dataset_loader).replace("/", ".").replace(".py", "")
-            if task in importlib.import_module(module)._SUPPORTED_TASKS:
-                dataset_loaders_for_task.append(str(dataset_loader))
-        except ImportError as err:
-            print(f"Skipping {dataset_loader} because of {err}")
-    
-    return dataset_loaders_for_task
-
-
-def get_classification_meta(dataset, name):
-    is_multilabel = False
-    label_to_idx = {"None": 0}
-    for labels in dataset['labels']:
-        if len(labels) > 1:
-            is_multilabel = True
-        for label in labels:
-            if label not in label_to_idx:
-                label_to_idx[label] = len(label_to_idx)
-    idx_to_label = {v: k for k, v in label_to_idx.items()}
-    task_type = "multilabel_clf" if is_multilabel else "clf"
-
-    return DatasetMetaInformation(
-        id_to_label=idx_to_label,
-        label_to_id=label_to_idx,
-        type=task_type,
-        name=name
-    )
-
-###
-# Relation Extraction Tasks Data Loading
-###
-def get_all_re_datasets(tokenizer, split="train") -> List[SingleDataset]:
-    re_datasets = []
-
-    for dataset_loader in tqdm(get_all_dataloaders_for_task(Tasks.RELATION_EXTRACTION), desc="Preparing RE datasets"):
-        dataset_name = Path(dataset_loader).with_suffix("").name
-
-        if "lll" in dataset_name or "chemprot" in dataset_name or "pdr" in dataset_name or "2011_rel" in dataset_name or "2013_ge" in dataset_name:
-            continue
-
-        try:
-            dataset = datasets.load_dataset(str(dataset_loader), name=f"{dataset_name}_bigbio_kb", split=split)
-        except ValueError as ve:
-            print(f"Skipping {dataset_loader} because of {ve}")
-            continue
-
-        dataset = dataset.map(re_to_classification)
-        classification_dataset = {"text": [], "labels": []}
-        for example in dataset:
-            for text, labels in zip(example["nested_texts"], example["nested_labels"]):
-                classification_dataset["text"].append(text)
-                classification_dataset["labels"].append(labels)
-        positive_indices = [i for i, l in enumerate(classification_dataset["labels"]) if l]
-        negative_indices = [i for i, l in enumerate(classification_dataset["labels"]) if not l]
-        if len(positive_indices) * 10 < len(negative_indices):
-            negative_indices = random.sample(negative_indices, len(positive_indices) * 10)
-        dataset = datasets.Dataset.from_dict(classification_dataset).select(positive_indices + negative_indices)
-        dataset = dataset.map(lambda x: tokenizer(x["text"], max_length=512, truncation=True),
-                              batched=True, remove_columns=["text"])
-        meta_info = get_classification_meta(dataset, dataset_name + "_RE")
-        re_datasets.append(SingleDataset(data=dataset, meta=meta_info))
-
-    return re_datasets
-
-
-###
-# Classificaiton Tasks Data Loading
-###
-def get_all_classification_datasets(tokenizer, split="train") -> List[SingleDataset]:
-    classification_datasets = []
-
-    for dataset_loader in tqdm(get_all_dataloaders_for_task(Tasks.TEXT_CLASSIFICATION), desc="Preparing TEXT datasets"):
-        dataset_name = Path(dataset_loader).with_suffix("").name
-
-        try:
-            dataset = datasets.load_dataset(str(dataset_loader), name=f"{dataset_name}_bigbio_text", split=split)
-            meta_info = get_classification_meta(dataset, dataset_name + "_TEXT")
-            dataset = dataset.map(lambda x: tokenizer(x["text"], max_length=512, truncation=True),
-                                  batched=True, remove_columns=["text", "id", "document_id"])
-            classification_datasets.append(SingleDataset(data=dataset, meta=meta_info))
-
-        except (ValueError, ImportError) as err:
-            print(f"Skipping {dataset_loader} because of {err}")
-            continue
-
-    return classification_datasets
-
 
 class BioMuppet(pl.LightningModule):
     def __init__(
@@ -297,7 +127,7 @@ class BioMuppet(pl.LightningModule):
             transformer: str,
             lr: float,
             dataset_to_meta: Dict[str, DatasetMetaInformation],
-            dropout=0.3,
+            dropout=0.1,
             use_lr_scheduler: bool = True,
     ):
         super().__init__()
@@ -317,8 +147,7 @@ class BioMuppet(pl.LightningModule):
         )
 
         self.transformer.resize_token_embeddings(len(self.tokenizer))
-        self.transformer_dropout = nn.Dropout(self.transformer.config.hidden_dropout_prob)
-        self.non_transformer_dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout)
 
         self.dataset_to_out_layer = nn.ModuleDict()
         self.dataset_to_train_f1 = {}
@@ -341,6 +170,7 @@ class BioMuppet(pl.LightningModule):
 
     def collate_fn(self, data):
         meta: DatasetMetaInformation
+        data = copy.deepcopy(data)
         all_metas = []
         all_labels = []
         collator = transformers.DataCollatorWithPadding(self.tokenizer,
@@ -367,7 +197,7 @@ class BioMuppet(pl.LightningModule):
                 attention_mask=features["attention_mask"],
             )
 
-        batch_seq_emb = self.transformer_dropout(output.last_hidden_state)
+        batch_seq_emb = self.dropout(output.last_hidden_state)
         batch_loss = 0
 
         for seq_emb, labels, meta in zip(batch_seq_emb, features["labels"], features["meta"]):
@@ -375,7 +205,7 @@ class BioMuppet(pl.LightningModule):
             batch_loss += TASK_TYPE_TO_LOSS[meta.type](logits, labels=labels, meta=meta)
 
         return MultitaskClassifierOutput(
-            loss=batch_loss/len(logits),
+            loss=batch_loss,
             dataset_to_logits={},
         )
 
@@ -385,7 +215,7 @@ class BioMuppet(pl.LightningModule):
         if self.lr_schedulers():
             self.lr_schedulers().step()
 
-        self.log("train/loss", output.loss, prog_bar=True)
+        self.log("train/loss", output.loss, prog_bar=True, on_step=True, on_epoch=True)
         return output.loss
 
     # def training_epoch_end(self, outputs) -> None:
@@ -394,17 +224,40 @@ class BioMuppet(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        assert self.num_training_steps > 0
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        no_decay = ["bias", "gamma", "beta", "LayerNorm.bias", "LayerNorm.weight"]
+        param_groups = [
+            {
+                "params": [
+                    p
+                    for n, p in self.named_parameters()
+                    if not any(nd in n for nd in no_decay)
+                ],
+                "weight_decay": 0.001,
+            },
+            {
+                "params": [
+                    p
+                    for n, p in self.named_parameters()
+                    if any(nd in n for nd in no_decay)
+                ],
+                "weight_decay": 0.0,
+            },
+        ]
+
+        optimizer = torch.optim.Adam(param_groups, lr=self.lr)
 
         if self.use_lr_scheduler:
             schedule = transformers.get_linear_schedule_with_warmup(
                 optimizer,
-                num_warmup_steps=0.1 * self.num_training_steps,
-                num_training_steps=self.num_training_steps,
+                num_warmup_steps=int(0.025 * MAX_STEPS),
+                num_training_steps=MAX_STEPS,
             )
 
-            return [optimizer], [schedule]
+            return [optimizer], [{
+                "scheduler": schedule,
+                "interval": "step",
+                "frequency": 1
+            }]
         else:
             return [optimizer]
 
@@ -423,8 +276,12 @@ if __name__ == '__main__':
 
     tokenizer = AutoTokenizer.from_pretrained("michiyasunaga/BioLinkBERT-base")
     train_datasets = []
-    train_datasets += get_all_re_datasets(tokenizer)
-    train_datasets += get_all_classification_datasets(tokenizer)
+    train_datasets += get_all_re_datasets()
+    train_datasets += get_all_classification_datasets()
+    train_datasets += get_all_coref_datasets()
+    for dataset in train_datasets:
+        columns_to_remove = [column for column in dataset.data["train"].column_names if column != "labels"]
+        dataset.data = dataset.data.map(lambda x: tokenizer(x["text"], max_length=512, truncation=True), batched=True, remove_columns=columns_to_remove)
 
     dataset_to_meta = {i.meta.name: i.meta for i in train_datasets}
 
@@ -432,10 +289,12 @@ if __name__ == '__main__':
         transformer="michiyasunaga/BioLinkBERT-base",
         lr=3e-5,
         dataset_to_meta=dataset_to_meta,
+        use_lr_scheduler=True
     )
 
-    checkpoint_callback = ModelCheckpoint(dirpath=args.output_dir, save_last=True,
-                                          save_top_k=4, monitor="train/loss", every_n_train_steps=10000)
+    callbacks = []
+    callbacks.append(ModelCheckpoint(dirpath=args.output_dir, every_n_epochs=1))
+    callbacks.append(LearningRateMonitor(logging_interval="step"))
     mixed_train_instances = []
     for dataset in tqdm(train_datasets):
         mixed_train_instances.extend(dataset)
@@ -443,13 +302,18 @@ if __name__ == '__main__':
     train_loader = DataLoader(
         dataset=mixed_train_instances,
         collate_fn=model.collate_fn,
-        batch_size=8,
+        batch_size=BATCH_SIZE,
+        shuffle=True
     )
 
+    print_average_task_mixing(train_loader)
+
     logger = WandbLogger(project="biomuppet")
-    trainer = pl.Trainer(max_epochs=1, gpus=4, strategy="ddp", precision=16,
-                         callbacks=[checkpoint_callback], logger=logger, min_steps=100000, max_steps=100000)
-    model.num_training_steps = len(train_loader) * trainer.max_epochs
+    trainer = pl.Trainer(gpus=NUM_GPUS, strategy="ddp", precision=16,
+                         callbacks=callbacks,
+                         accumulate_grad_batches=GRADIENT_ACCUMULATION,
+                         logger=logger, max_steps=MAX_STEPS, gradient_clip_val=5)
+    model.num_training_steps = MAX_STEPS
 
     print(f"Training on {len(train_datasets)} datasets with a total of {len(mixed_train_instances)} training instances...")
     # Train the model
