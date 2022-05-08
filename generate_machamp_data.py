@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List
 import importlib.util
 from inspect import getmembers
+from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
 import datasets
 from datasets import DatasetDict
@@ -18,6 +19,7 @@ import pandas as pd
 import glob
 import re
 import multiprocessing
+from copy import deepcopy
 
 import bigbio
 from bigbio.utils.constants import Tasks
@@ -29,7 +31,8 @@ tokenizer = SpaceTokenizer()
 ignored_datasets = [
     'n2c2_2018_track2', 'n2c2_2018_track1', 'n2c2_2011', 'n2c2_2010',
     'n2c2_2009', 'n2c2_2008', 'n2c2_2006_smokers', 'n2c2_2006_deid',
-    'psytar', 'swedish_medical_ner', 'quaero', 'pho_ner', 'ctebmsp', 'codiesp'
+    'psytar', 'swedish_medical_ner', 'quaero', 'pho_ner', 'ctebmsp',
+    'codiesp', 'pubtator_central',
 ]
 
 # Dataset to name & subset_id mapping for special cases datasets
@@ -53,7 +56,7 @@ dataset_to_name_subset_map = {
         ('chebi_nactem_abstr_ann2_bigbio_kb', 'chebi_nactem_abstr_ann2'), 
         ('chebi_nactem_fullpaper_bigbio_kb', 'chebi_nactem_fullpaper')
     ],
-    'dian_iber_eval_en_bigbio_kb': [('diann_iber_eval_en_bigbio_kb', 'diann_iber_eval_en')],
+    'dian_iber_eval': [('diann_iber_eval_en_bigbio_kb', 'diann_iber_eval_en')],
     'pubtator_central': [('pubtator_central_sample_bigbio_kb', 'pubtator_central')],
     'codiesp': [('codiesp_X_bigbio_kb', 'codiesp_x')],
     'muchmore': [('muchmore_en_bigbio_kb','muchmore_en')]
@@ -354,22 +357,102 @@ def get_biodataset_metadata():
     df = pd.DataFrame(datasets_meta)
     return df
 
+def merge_discontiguous_entities(entities):
+    # Break multiple entities into a single one
+    for i, entity in enumerate(entities):
+        if len(entity['offsets']) == 1:
+            continue
+            
+        s_idx, e_idx = entity['offsets'][0]
+        for offset in entity['offsets'][1:]:
+            if offset[0] < s_idx:
+                s_idx = offset[0]
+            if offset[1] > e_idx:
+                e_idx = offset[1]
+                
+        entities[i] = {
+            'id': entities[i]['id'],
+            'type': entities[i]['type'],
+            'text': [' '.join(entities[i]['text'])],
+            'offsets': [[s_idx, e_idx]],
+            'normalized': []
+        }
+    return entities
+
+class DpEntry(NamedTuple):
+    position_end: int
+    entity_count: int
+    entity_lengths_sum: int
+    last_entity: Optional[dict] 
+    
+def rearrange_overlapped_entities(entities):
+    # Break nested entities into multiple non-overlapping entities. The code is adapted from: 
+    # https://github.com/flairNLP/flair/blob/27e6c41dbfc540ae1302c1b400006a15e46575c0/flair/datasets/biomedical.py#L152
+    # Uses dynamic programming approach to calculate maximum independent set in interval graph
+    # with sum of all entity lengths as secondary key
+    num_before = len(entities)
+    
+    dp_array = [DpEntry(position_end=0, entity_count=0, entity_lengths_sum=0, last_entity=None)]
+    for entity in sorted(entities, key=lambda ent: (ent['offsets'][0][1] * 100) - ent['offsets'][0][0]):
+        i = len(dp_array) - 1
+        while dp_array[i].position_end > entity['offsets'][0][0]:
+            i -= 1
+        
+        len_span = (entity['offsets'][0][1] - entity['offsets'][0][0])
+        if dp_array[i].entity_count + 1 > dp_array[-1].entity_count or (
+            dp_array[i].entity_count + 1 == dp_array[-1].entity_count
+            and dp_array[i].entity_lengths_sum + len_span > dp_array[-1].entity_lengths_sum
+        ):
+            dp_array += [
+                DpEntry(
+                    position_end=entity['offsets'][0][1],
+                    entity_count=dp_array[i].entity_count + 1,
+                    entity_lengths_sum=dp_array[i].entity_lengths_sum + len_span,
+                    last_entity=entity
+                )
+            ]
+        else:
+            dp_array += [dp_array[-1]]
+
+    independent_entities = []
+    p = dp_array[-1].position_end
+    for dp_entry in dp_array[::-1]:
+        if dp_entry.last_entity is None:
+            break
+        if dp_entry.position_end <= p:
+            independent_entities += [dp_entry.last_entity]
+            p = dp_entry.last_entity['offsets'][0][0]
+
+    return independent_entities
+            
+    
 def bigbio_ner_to_conll(sample):
     regex = re.compile('[^a-zA-Z_0-9\-]')                        
-    passage_offsets = list(map(lambda p: p['offsets'][0], sample['passages'])) # [(L1, R1), (L2, R2), ..., (Ln, Rn)]
-    entities = sample['entities']
     
+    # Sort passages & retrieve the ordered offsets
+    sample['passages'] = sorted(sample['passages'], key=lambda pas: pas['offsets'][0][0])
+    passage_offsets = list(map(lambda p: p['offsets'][0], sample['passages'])) # [(L1, R1), (L2, R2), ..., (Ln, Rn)]
+
+    # Preprocess entity
+    entities = rearrange_overlapped_entities(merge_discontiguous_entities(sample['entities']))
+    
+    # Generate CONLL formatted data
     conll_data = []
     passage = sample['passages'][0]['text'][0].replace('\t',' ').replace('\n',' ')
     p_idx, p_offset = 0, passage_offsets[0]
     for entity in sorted(entities, key=lambda e: e['offsets'][0][0]):
         # check entity offset & advance passage if needed
         s_idx, e_idx = entity['offsets'][0][0], entity['offsets'][0][1]
-        while entity['offsets'][0][0] > p_offset[1]:
+        while s_idx > p_offset[1]:
+            # No entities on the passage, convert the rest of the passage to tokens without entity
+            if len(passage) > 0:
+                sentence = passage.replace('\t',' ').replace('\n',' ')
+                for token in tokenizer.tokenize(sentence):
+                    conll_data.append((token, 'O'))
             p_idx += 1
             passage = sample['passages'][p_idx]['text'][0].replace('\t',' ').replace('\n',' ')
             p_offset = passage_offsets[p_idx]
-                                         
+
         # convert absolute index to relative index
         rs_idx, re_idx = s_idx - p_offset[0], e_idx - p_offset[0]
         
@@ -564,7 +647,7 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                         load_from_cache_file=not DEBUG,
                         num_proc=multiprocessing.cpu_count() * 2
                     )
-                    ner_datasets.append(SingleDataset(dataset, name=dataset_name + "_ner"))
+                    ner_datasets.append(SingleDataset(dataset, name=f"{name.replace('_bigbio_kb','')}_ner"))
                 except Exception as ve:
                     print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")            
         else:
