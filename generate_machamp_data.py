@@ -14,11 +14,12 @@ from datasets import DatasetDict
 from flair.tokenization import SegtokSentenceSplitter
 from tqdm import tqdm
 import numpy as np
+import multiprocessing
 
 import bigbio
 from bigbio.utils.constants import Tasks
 
-DEBUG = False
+DEBUG = True
 
 
 def overlaps(a, b):
@@ -205,10 +206,10 @@ def re_to_classification(example, mask_entities=True):
     return new_example
 
 
-def get_classification_meta(dataset, name):
+def get_classification_meta(dataset, name, label_key='labels'):
     is_multilabel = False
     label_to_idx = {"None": 0}
-    for labels in dataset['train']['labels']:
+    for labels in dataset['train'][label_key]:
         if len(labels) > 1:
             is_multilabel = True
         for label in labels:
@@ -317,12 +318,14 @@ def get_all_re_datasets() -> List[SingleDataset]:
             print(f"Skipping {dataset_loader} because of {ve}")
             continue
 
-        dataset = dataset.map(split_sentences)
+        dataset = dataset.map(split_sentences, load_from_cache_file=not DEBUG, num_proc=multiprocessing.cpu_count() * 2)
         dataset = dataset.map(
             re_to_classification,
             batched=True,
             batch_size=1,
-            remove_columns=dataset["train"].column_names,
+            remove_columns=dataset["train"].column_names, 
+            load_from_cache_file=not DEBUG, 
+            num_proc=multiprocessing.cpu_count() * 2
         )
         dataset = dataset.filter(is_valid_re)
 
@@ -393,12 +396,14 @@ def get_all_coref_datasets() -> List[SingleDataset]:
             print(f"Skipping {dataset_loader} because of {ve}")
             continue
 
-        dataset = dataset.map(split_sentences)
+        dataset = dataset.map(split_sentences, load_from_cache_file=not DEBUG, num_proc=multiprocessing.cpu_count() * 2)
         dataset = dataset.map(coref_to_re).map(
             partial(re_to_classification, mask_entities=False),
             batched=True,
             batch_size=1,
-            remove_columns=dataset["train"].column_names,
+            remove_columns=dataset["train"].column_names, 
+            load_from_cache_file=not DEBUG, 
+            num_proc=multiprocessing.cpu_count() * 2
         )
 
         dataset = dataset.filter(is_valid_re)
@@ -463,12 +468,13 @@ def get_all_sts_datasets() -> List[SingleDataset]:
             elif dataset_name == "umnsrs":
                 assert 0 <= label <= 1600, f"Oh no {dataset_name} {example['label']}"
 
-        dataset = dataset.map(replace_)
-        dataset = dataset.map(label_asserts_)
+        dataset = dataset.map(replace_, load_from_cache_file=not DEBUG, num_proc=multiprocessing.cpu_count() * 2)
+        dataset = dataset.map(label_asserts_, load_from_cache_file=not DEBUG, num_proc=multiprocessing.cpu_count() * 2)
         dataset = dataset.remove_columns(['id', "document_id"])
         
-        sts_datasets.append(SingleDataset(dataset, name=dataset_name + "_sts"))
-
+        meta = get_classification_meta(dataset=dataset, name=dataset_name + "_STS", label_key='label')
+        sts_datasets.append(SingleDataset(dataset, meta=meta))
+    
         if DEBUG:
             break
 
@@ -490,18 +496,17 @@ if __name__ == "__main__":
     ## Process classification-type datasets
     ### Add to Machamp config
     for dataset in tqdm(re_datasets + coref_datasets + classification_datasets):
-        config[dataset.name] = {
-            "train_data_path": str((out / dataset.name).with_suffix(".train")),
-            "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
+        config[dataset.meta.name] = {
+            "train_data_path": str((out / dataset.meta.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.meta.name).with_suffix(".valid")),
             "sent_idxs": [0],
             "tasks": {
-                dataset.name: {
+                dataset.meta.name: {
                     "column_idx": 1,
                     "task_type": "classification"
                 }
             }
         }
-
 
         ### Generate validation split if not available
         if not "valid" in dataset.data:
@@ -512,7 +517,7 @@ if __name__ == "__main__":
             })
 
         ### Write train file
-        with (out / dataset.name).with_suffix(".train").open("w", encoding="utf8") as f:
+        with (out / dataset.meta.name).with_suffix(".train").open("w", encoding="utf8") as f:
             for example in dataset.data["train"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
@@ -524,7 +529,7 @@ if __name__ == "__main__":
                 f.write(text + "\t" + label + "\n")
 
         ### Write validation file
-        with (out / dataset.name).with_suffix(".valid").open("w", encoding="utf8") as f:
+        with (out / dataset.meta.name).with_suffix(".valid").open("w", encoding="utf8") as f:
             for example in dataset.data["valid"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
@@ -538,12 +543,12 @@ if __name__ == "__main__":
     
     for dataset in tqdm(sts_datasets):
         # WRONG, none of them are classification, except mqp (0/1 dissimilar/similar)
-        config[dataset.name] = {
-            "train_data_path": str((out / dataset.name).with_suffix(".train")),
-            "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
+        config[dataset.meta.name] = {
+            "train_data_path": str((out / dataset.meta.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.meta.name).with_suffix(".valid")),
             "sent_idxs": [0,1],
             "tasks": {
-                dataset.name: {
+                dataset.meta.name: {
                     "column_idx": 2,
                     "task_type": "classification"
                 }
@@ -558,8 +563,8 @@ if __name__ == "__main__":
                 "valid": train_valid["test"],
             })
         
-        dataset.data["train"].to_csv((out / dataset.name).with_suffix(".train"), sep="\t", index=None, header=None)
-        dataset.data["valid"].to_csv((out / dataset.name).with_suffix(".valid"), sep="\t", index=None, header=None)
+        dataset.data["train"].to_csv((out / dataset.meta.name).with_suffix(".train"), sep="\t", index=None, header=None)
+        dataset.data["valid"].to_csv((out / dataset.meta.name).with_suffix(".valid"), sep="\t", index=None, header=None)
 
 
     ## Write Machamp config
