@@ -505,6 +505,25 @@ def bigbio_ner_to_conll(sample):
     sample['conll'] = conll_data
     return sample
 
+def get_sequence_labelling_meta(dataset, name):
+    label_to_idx = {"None": 0}
+    for dset_split in dataset.keys():
+        for conll_data in dataset[dset_split]['conll']:
+            for token, label in conll_data:
+                if label not in label_to_idx:
+                    label_to_idx[label] = len(label_to_idx)
+    idx_to_label = {v: k for k, v in label_to_idx.items()}
+    task_type = "sequence_labeling"
+
+    print('idx_to_label', idx_to_label)
+    print('label_to_idx', label_to_idx)
+    return DatasetMetaInformation(
+        id_to_label=idx_to_label,
+        label_to_id=label_to_idx,
+        type=task_type,
+        name=name
+    )
+
 ###
 # Dataset Wrapper
 ###
@@ -741,7 +760,8 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                         load_from_cache_file=not DEBUG,
                         num_proc=multiprocessing.cpu_count() * 2
                     )
-                    ner_datasets.append(SingleDataset(dataset, name=f"{name.replace('_bigbio_kb','')}_ner"))
+                    meta = get_sequence_labelling_meta(dataset, f"{name.replace('_bigbio_kb','')}_ner")
+                    ner_datasets.append(SingleDataset(dataset, meta))
                 except Exception as ve:
                     print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")            
         else:
@@ -755,12 +775,12 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                         load_from_cache_file=not DEBUG,
                         num_proc=multiprocessing.cpu_count() * 2
                     )
-                    ner_datasets.append(SingleDataset(dataset, name=dataset_name + "_ner"))
+                    meta = get_sequence_labelling_meta(dataset, f"{name.replace('_bigbio_kb','')}_ner")
+                    ner_datasets.append(SingleDataset(dataset, meta))
                 except Exception as ve:
                     print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")
-
         if DEBUG:
-            if idx >= 5:
+            if idx >= 3:
                 break
 
     return ner_datasets
@@ -831,13 +851,13 @@ if __name__ == "__main__":
         if not "train" in dataset.data:
             continue
             
-        print(f'Saving `{dataset.name}`')
-        config[dataset.name] = {
-            "train_data_path": str((out / dataset.name).with_suffix(".train")),
-            "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
+        print(f'Saving `{dataset.meta.name}`')
+        config[dataset.meta.name] = {
+            "train_data_path": str((out / dataset.meta.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.meta.name).with_suffix(".valid")),
             "word_idx": 0,
             "tasks": {
-                dataset.name: {
+                dataset.meta.name: {
                     "column_idx": 1,
                     "task_type": "seq"
                 }
@@ -853,14 +873,14 @@ if __name__ == "__main__":
             })            
 
         ### Write train file
-        with (out / dataset.name).with_suffix(".train").open("w") as f:
+        with (out / dataset.meta.name).with_suffix(".train").open("w") as f:
             for example in dataset.data["train"]:
                 for word, label in example['conll']:
                     f.write(word + "\t" + label + "\n")
                 f.write( "\n")
 
         ### Write validation file
-        with (out / dataset.name).with_suffix(".valid").open("w") as f:
+        with (out / dataset.meta.name).with_suffix(".valid").open("w") as f:
             for example in dataset.data["valid"]:
                 for word, label in example['conll']:
                     f.write(word + "\t" + label + "\n")
