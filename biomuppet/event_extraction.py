@@ -1,19 +1,28 @@
 from collections import defaultdict
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
 import datasets
 import numpy as np
 from bigbio.utils.constants import Tasks
 from tqdm import tqdm
+import itertools
 
 from biomuppet.classification import get_classification_meta
-from biomuppet.utils import overlaps, SingleDataset, get_all_dataloaders_for_task, split_sentences
+from biomuppet.utils import (
+    overlaps,
+    SingleDataset,
+    get_all_dataloaders_for_task,
+    split_sentences,
+)
+
+FAILING_QA = ["pcr", "bionlp_st_2013_ge", "bionlp_st_2013_gro"]
 
 
 def is_valid_re(example) -> bool:
     text = example["text"]
     return text.count("$") >= 2 and text.count("@") >= 2
+
 
 def insert_consistently(offset, insertion, text, starts, ends):
     new_text = text[:offset] + insertion + text[offset:]
@@ -128,65 +137,93 @@ def insert_pair_markers(text, head, tail, passage_offset, mask_entities=True):
     return text
 
 
-def event_trigger_to_entity(example):
-
-    for event in example["events"]:
-        example["entities"].append({"id" : event["id"],
-                                    "type" : event["type"],
-                                    "text" : event["trigger"]["text"],
-                                    "offsets" : event["trigger"]["offsets"],
-                                    "is_event" : True})
-
-    return example
-
-def ee_to_re_classification(example, mask_entities=True):
-
-    new_example = {"text": [""], "labels": [[""]]}
+def events_to_relations(events) -> Dict:
 
     relations = defaultdict(set)
 
-    for event in example["events"][0]:
+    for event in events:
+
         head = event["id"]
+
         for argument in event["arguments"]:
+
             tail = argument["ref_id"]
             relation_type = argument["role"]
             relations[(head, tail)].add(relation_type)
 
-    for passage in example["passages"][0]:
-        passage_range = range(*passage["offsets"][0])
+    return dict(relations)
 
-        passage_entities = []
-        for entity in example["entities"][0]:
+
+def get_passage_event_entities(passage_range, relations, entities, events):
+
+    valid_ids = set(e for head_tail, types in relations.items() for e in head_tail)
+
+    passage_entities = []
+
+    for entity in entities:
+        if entity["id"] in valid_ids:
             start = entity["offsets"][0][0]
             end = entity["offsets"][-1][1]
             if start in passage_range and (end - 1) in passage_range:
+                entity["event"] = False
                 passage_entities.append(entity)
 
-        for i, head in enumerate(passage_entities):
+    for event in events:
+        if event["id"] in valid_ids:
+            start = event["trigger"]["offsets"][0][0]
+            end = event["trigger"]["offsets"][-1][1]
+            if start in passage_range and (end - 1) in passage_range:
+                entity = {
+                    "id": event["id"],
+                    "text": event["trigger"]["text"],
+                    "offsets": event["trigger"]["offsets"],
+                    "type": event["type"],
+                    "event": True,
+                }
+                passage_entities.append(entity)
 
-            if "is_event" not in head:
+    return passage_entities
+
+
+def event_extraction_to_relation_classification(example, mask_entities=True):
+
+    new_example = {"text": [""], "labels": [[""]]}
+
+    relations = events_to_relations(events=example["events"][0])
+
+    for passage in example["passages"][0]:
+
+        passage_range = range(*passage["offsets"][0])
+
+        passage_entities = get_passage_event_entities(
+            passage_range=passage_range,
+            relations=relations,
+            entities=example["entities"][0],
+            events=example["events"][0],
+        )
+
+        for (head, tail) in itertools.permutations(passage_entities, 2):
+
+            if not head["event"]:
                 continue
 
-            for tail in passage_entities[i:]:
+            if head == tail:
+                print("this should not happen")
+                continue
 
-                if head == tail:
-                    continue
+            text = insert_pair_markers(
+                passage["text"][0],
+                head=head,
+                tail=tail,
+                passage_offset=passage_range[0],
+                mask_entities=mask_entities,
+            )
 
-                text = insert_pair_markers(
-                    passage["text"][0],
-                    head=head,
-                    tail=tail,
-                    passage_offset=passage_range[0],
-                    mask_entities=mask_entities
-                )
+            key = (head["id"], tail["id"])
+            labels = relations[key] if key in relations else set()
 
-                # NOTE:
-                # relations is a defaultdict, so if this key is missing
-                # will give back an empy set.
-                # is this on purpose?
-                labels = relations[(head["id"], tail["id"])]
-                new_example["text"].append(text)
-                new_example["labels"].append(labels)
+            new_example["text"].append(text)
+            new_example["labels"].append(labels)
 
     return new_example
 
@@ -196,11 +233,12 @@ def get_all_ee_as_re_datasets() -> List[SingleDataset]:
     re_datasets = []
 
     dataset_loaders = get_all_dataloaders_for_task(Tasks.EVENT_EXTRACTION)
+
     for dataset_loader in tqdm(dataset_loaders, desc="Preparing RE datasets"):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
-        if dataset_name == "pcr":
-            continue # connection times out
+        if dataset_name in FAILING_QA:
+            continue
 
         try:
             dataset = datasets.load_dataset(
@@ -211,10 +249,9 @@ def get_all_ee_as_re_datasets() -> List[SingleDataset]:
             continue
 
         dataset = dataset.map(split_sentences)
-        dataset = dataset.map(event_trigger_to_entity)
 
         dataset = dataset.map(
-            ee_to_re_classification,
+            event_extraction_to_relation_classification,
             batched=True,
             batch_size=1,
             remove_columns=dataset["train"].column_names,
@@ -226,6 +263,7 @@ def get_all_ee_as_re_datasets() -> List[SingleDataset]:
         re_datasets.append(SingleDataset(data=dataset, meta=meta))
 
     return re_datasets
+
 
 if __name__ == "__main__":
 
@@ -243,22 +281,18 @@ if __name__ == "__main__":
             "train_data_path": str((out / dataset.name).with_suffix(".train")),
             "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
             "sent_idxs": [0],
-            "tasks": {
-                dataset.name: {
-                    "column_idx": 1,
-                    "task_type": "classification"
-                }
-            }
+            "tasks": {dataset.name: {"column_idx": 1, "task_type": "classification"}},
         }
-
 
         ### Generate validation split if not available
         if "valid" not in dataset.data:
             train_valid = dataset.data["train"].train_test_split(test_size=0.1)
-            dataset.data = DatasetDict({
-                "train": train_valid["train"],
-                "valid": train_valid["test"],
-            })
+            dataset.data = DatasetDict(
+                {
+                    "train": train_valid["train"],
+                    "valid": train_valid["test"],
+                }
+            )
 
         ### Write train file
         with (out / dataset.name).with_suffix(".train").open("w", encoding="utf8") as f:
