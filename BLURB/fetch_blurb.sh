@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
+# Fetches BLURB dataset PREPROCESSED via LINKBERT
+wget https://nlp.stanford.edu/projects/myasu/LinkBERT/data.zip
+unzip data.zip
 
-mkdir -p blurb_data
-cd blurb_data
-
-wget https://microsoft.github.io/BLURB/sample_code/data_generation.tar.gz
-tar -xf data_generation.tar.gz
