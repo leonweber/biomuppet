@@ -674,7 +674,7 @@ if __name__ == "__main__":
         with (out / name).with_suffix(".train").open("w") as f:
             for example in dataset.data["train"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
-                    else example["sequence"].strip().replace("\t", " ").replace("\n", " ")
+                    else example["sequence"][0].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
                     continue
                 label = "|".join(sorted(example["labels"]))
@@ -687,7 +687,7 @@ if __name__ == "__main__":
         with (out / name).with_suffix(".valid").open("w") as f:
             for example in dataset.data["valid"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
-                    else example["sequence"].strip().replace("\t", " ").replace("\n", " ")
+                    else example["sequence"][0].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
                     continue
                 label = "|".join(sorted(example["labels"]))
