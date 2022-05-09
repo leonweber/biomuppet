@@ -209,12 +209,16 @@ def re_to_classification(example, mask_entities=True):
 def get_classification_meta(dataset, name, label_key='labels'):
     is_multilabel = False
     label_to_idx = {"None": 0}
-    for labels in dataset['train'][label_key]:
-        if len(labels) > 1:
-            is_multilabel = True
-        for label in labels:
-            if label not in label_to_idx:
-                label_to_idx[label] = len(label_to_idx)
+    for dset_split in dataset.keys():
+        if len(dataset[dset_split]) == 0:
+            continue
+            
+        for labels in dataset[dset_split][label_key]:
+            if len(labels) > 1:
+                is_multilabel = True
+            for label in labels:
+                if label not in label_to_idx:
+                    label_to_idx[label] = len(label_to_idx)
     idx_to_label = {v: k for k, v in label_to_idx.items()}
     task_type = "multilabel_clf" if is_multilabel else "clf"
 
