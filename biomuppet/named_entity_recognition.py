@@ -48,20 +48,22 @@ dataset_to_name_subset_map = {
     'tmvar_v1': [('tmvar_v1_bigbio_kb','tmvar_v1')],
     'tmvar_v2': [('tmvar_v2_bigbio_kb','tmvar_v2')],
     'genetag': [
-        ('genetaggold_bigbio_kb', 'genetaggold'),
-        ('genetagcorrect_bigbio_kb', 'genetagcorrect')
+        ('genetaggold_bigbio_kb', 'genetaggold')
     ],
     'chebi_nactem': [
         ('chebi_nactem_abstr_ann1_bigbio_kb', 'chebi_nactem_abstr_ann1'), 
-        ('chebi_nactem_abstr_ann2_bigbio_kb', 'chebi_nactem_abstr_ann2'), 
         ('chebi_nactem_fullpaper_bigbio_kb', 'chebi_nactem_fullpaper')
     ],
+    'cellfinder': [('cellfinder_bigbio_kb','cellfinder')],
+    'bioscope': [
+        ('bioscope_abstracts_bigbio_kb','bioscope_abstracts'),
+        ('bioscope_papers_bigbio_kb','bioscope_papers'),
+    ],
     'diann_iber_eval': [('diann_iber_eval_en_bigbio_kb', 'diann_iber_eval_en')],
-    'pubtator_central': [('pubtator_central_sample_bigbio_kb', 'pubtator_central')],
-    'codiesp': [('codiesp_X_bigbio_kb', 'codiesp_x')],
+    # 'pubtator_central': [('pubtator_central_sample_bigbio_kb', 'pubtator_central')],
+    # 'codiesp': [('codiesp_X_bigbio_kb', 'codiesp_x')],
     'muchmore': [('muchmore_en_bigbio_kb','muchmore_en')]
 }
-
 
 def get_sequence_labelling_meta(dataset, name):
     label_to_idx = {"None": 0}
@@ -299,6 +301,7 @@ def get_all_ner_datasets() -> List[SingleDataset]:
         if dataset_name in dataset_to_name_subset_map:
             for name, subset_id in dataset_to_name_subset_map[dataset_name]:
                 try:
+                    print(f'datasets.load_dataset({dataset_loader}, name={name}, subset_id={subset_id})')
                     dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
                     dataset = dataset.map(bigbio_ner_to_conll,
                         remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations'],
@@ -314,6 +317,7 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                 if 'bigbio_kb' not in schema:
                     continue
                 try:
+                    print(f'datasets.load_dataset({dataset_loader}, name={name}, subset_id={subset_id})')
                     dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
                     dataset = dataset.map(bigbio_ner_to_conll, 
                         remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations'],
