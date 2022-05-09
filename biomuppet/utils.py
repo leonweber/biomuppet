@@ -8,7 +8,7 @@ import datasets
 from bigbio.utils.constants import Tasks
 from flair.tokenization import SegtokSentenceSplitter
 
-DEBUG = False
+DEBUG = True
 
 
 @dataclasses.dataclass
@@ -17,6 +17,7 @@ class DatasetMetaInformation:
     id_to_label: dict
     name: str
     type: str
+    entropy: float
 
     def to(self, device):
         return self
