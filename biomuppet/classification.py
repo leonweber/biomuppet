@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 
 import datasets
+import scipy.stats
 from bigbio.utils.constants import Tasks
 from tqdm import tqdm
 
@@ -13,12 +14,14 @@ from biomuppet.utils import DatasetMetaInformation, SingleDataset, \
 def get_classification_meta(dataset, name):
     is_multilabel = False
     label_to_idx = {"None": 0}
+    all_train_labels = []
     for labels in dataset['train']['labels']:
         if len(labels) > 1:
             is_multilabel = True
         for label in labels:
             if label not in label_to_idx:
                 label_to_idx[label] = len(label_to_idx)
+            all_train_labels.append(label_to_idx[label])
     idx_to_label = {v: k for k, v in label_to_idx.items()}
     task_type = "multilabel_clf" if is_multilabel else "clf"
 
@@ -26,7 +29,8 @@ def get_classification_meta(dataset, name):
         id_to_label=idx_to_label,
         label_to_id=label_to_idx,
         type=task_type,
-        name=name
+        name=name,
+        entropy=scipy.stats.entropy(all_train_labels)
     )
 
 

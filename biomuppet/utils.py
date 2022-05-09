@@ -17,6 +17,7 @@ class DatasetMetaInformation:
     id_to_label: dict
     name: str
     type: str
+    entropy: float
 
     def to(self, device):
         return self

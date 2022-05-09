@@ -27,15 +27,16 @@ from transformers.models.auto.tokenization_auto import AutoTokenizer
 
 from bigbio.utils.constants import Tasks
 
-from generate_machamp_data import subsample_negative, is_valid_re, get_all_re_datasets, \
-    get_all_classification_datasets, get_all_coref_datasets
+from biomuppet.classification import get_all_classification_datasets
+from biomuppet.coreference_resolution import get_all_coref_datasets
+from biomuppet.relation_extraction import get_all_re_datasets
 
 pl.seed_everything(42)
 
 NUM_GPUS = 4
-GRADIENT_ACCUMULATION = 8
+GRADIENT_ACCUMULATION = 1
 BATCH_SIZE = 32
-MAX_STEPS = 100000 * GRADIENT_ACCUMULATION
+MAX_STEPS = 140000 * GRADIENT_ACCUMULATION
 
 def print_average_task_mixing(dataloader, num_samples=1):
     avg_tasks_per_epoch = []
@@ -70,7 +71,7 @@ def classification_loss(logits, labels, meta):
     label_tensor[meta.label_to_id[label]] = 1
     loss = nn.CrossEntropyLoss()(cls_logit.unsqueeze(0), label_tensor.to(logits.device).unsqueeze(0))
     if len(meta.label_to_id) > 1:
-        loss /= math.log(len(meta.label_to_id))
+        loss /= np.log(len(meta.label_to_id))
 
     return loss
 
@@ -81,8 +82,10 @@ def multilabel_classification_loss(logits, labels, meta):
     label_tensor = torch.zeros(len(meta.label_to_id))
     for label in labels:
         label_tensor[meta.label_to_id[label]] = 1
+    loss = nn.BCEWithLogitsLoss()(cls_logit.unsqueeze(0), label_tensor.to(logits.device).unsqueeze(0))
+    loss /= np.log(len(meta.label_to_id))
 
-    return nn.BCEWithLogitsLoss()(cls_logit.unsqueeze(0), label_tensor.to(logits.device).unsqueeze(0))
+    return loss
 
 
 TASK_TYPE_TO_LOSS = {"clf": classification_loss,
@@ -212,8 +215,8 @@ class BioMuppet(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         output = self.forward(batch)
 
-        if self.lr_schedulers():
-            self.lr_schedulers().step()
+        # if self.lr_schedulers():
+        #     self.lr_schedulers().step()
 
         self.log("train/loss", output.loss, prog_bar=True, on_step=True, on_epoch=True)
         return output.loss
@@ -293,7 +296,8 @@ if __name__ == '__main__':
     )
 
     callbacks = []
-    callbacks.append(ModelCheckpoint(dirpath=args.output_dir, every_n_epochs=1))
+    callbacks.append(ModelCheckpoint(dirpath=args.output_dir, every_n_train_steps=5000,
+                                     save_top_k=-1))
     callbacks.append(LearningRateMonitor(logging_interval="step"))
     mixed_train_instances = []
     for dataset in tqdm(train_datasets):
