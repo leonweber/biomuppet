@@ -508,6 +508,9 @@ def bigbio_ner_to_conll(sample):
 def get_sequence_labelling_meta(dataset, name):
     label_to_idx = {"None": 0}
     for dset_split in dataset.keys():
+        if len(dataset[dset_split]) == 0:
+            continue
+
         for conll_data in dataset[dset_split]['conll']:
             for token, label in conll_data:
                 if label not in label_to_idx:
@@ -515,8 +518,6 @@ def get_sequence_labelling_meta(dataset, name):
     idx_to_label = {v: k for k, v in label_to_idx.items()}
     task_type = "sequence_labeling"
 
-    print('idx_to_label', idx_to_label)
-    print('label_to_idx', label_to_idx)
     return DatasetMetaInformation(
         id_to_label=idx_to_label,
         label_to_id=label_to_idx,
