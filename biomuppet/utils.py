@@ -83,3 +83,6 @@ def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
 
     return dataset_loaders_for_task
 
+
+def clean_text(text):
+    return text.strip().replace("\t", " ").replace("\n", " ")

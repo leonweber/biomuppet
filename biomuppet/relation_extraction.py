@@ -1,3 +1,4 @@
+import json
 import multiprocessing
 from collections import defaultdict
 from pathlib import Path
@@ -6,11 +7,12 @@ from typing import List
 import datasets
 import numpy as np
 from bigbio.utils.constants import Tasks
+from datasets import DatasetDict
 from tqdm import tqdm
 
 from biomuppet.classification import get_classification_meta
 from biomuppet.utils import overlaps, SingleDataset, get_all_dataloaders_for_task, \
-    split_sentences, DEBUG
+    split_sentences, DEBUG, clean_text
 
 
 def is_valid_re(example) -> bool:
@@ -206,3 +208,60 @@ def get_all_re_datasets() -> List[SingleDataset]:
 
 
     return re_datasets
+
+if __name__ == '__main__':
+    re_datasets = get_all_re_datasets()
+    config = {}
+    out = Path("machamp/data/bigbio/re")
+    out.mkdir(exist_ok=True, parents=True)
+
+    for dataset in tqdm(re_datasets):
+        config[dataset.meta.name] = {
+            "train_data_path": str((out / dataset.meta.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.meta.name).with_suffix(".valid")),
+            "sent_idxs": [0],
+            "tasks": {
+                dataset.meta.name: {
+                    "column_idx": 1,
+                    "task_type": "classification"
+                }
+            }
+        }
+
+
+        ### Generate validation split if not available
+        if not "validation" in dataset.data:
+            train_valid = dataset.data["train"].train_test_split(test_size=0.1)
+            dataset.data = DatasetDict({
+                "train": train_valid["train"],
+                "validation": train_valid["test"],
+            })
+
+        ### Write train file
+        with (out / dataset.meta.name).with_suffix(".train").open("w", encoding="utf8") as f:
+            for example in dataset.data["train"]:
+                text = clean_text(example["text"])
+                if not text:
+                    continue
+
+                label = "|".join(sorted(example["labels"]))
+                if not label.strip():
+                    label = "None"
+
+                f.write(text + "\t" + label + "\n")
+
+        ### Write validation file
+        with (out / dataset.meta.name).with_suffix(".valid").open("w", encoding="utf8") as f:
+            for example in dataset.data["validation"]:
+                text = example["text"].strip().replace("\t", " ").replace("\n", " ")
+                if not text:
+                    continue
+                label = "|".join(sorted(example["labels"]))
+                if not label.strip():
+                    label = "None"
+
+                f.write(text + "\t" + label + "\n")
+
+    ## Write Machamp config
+    with open(out / "config.json", "w") as f:
+        json.dump(config, f, indent=1)
