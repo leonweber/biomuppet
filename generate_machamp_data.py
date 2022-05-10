@@ -519,10 +519,17 @@ def get_all_qa_datasets() -> List[SingleDataset]:
     Transforms ALL QA dataset with yesno and multiple choice --> MaChamp classification
     Transforms some QA datasest with multiple choice that has exact match between answer and the prompt --> MaChamp
     Sequence
+    Currenctly pulls biomrc, medhop, pubmed_qa, sciq. biomrc, pubmed_qa has subset_ids
     :return: qa_datasets
     """
     qa_clf_datasets = []
     qa_seq_datasets = []
+    ignored_qa_datasets = ["mediqa_qa","biology_how_why_corpus", "med_qa", "bioasq_task_b"]
+    ds_subset_id = {'biomrc':['biomrc_large_B', 'biomrc_small_B', 'biomrc_tiny_B' ],
+                    'pubmed_qa':['pubmed_qa_artificial', 'pubmed_qa_labeled_fold0', 'pubmed_qa_labeled_fold1',
+                                 'pubmed_qa_labeled_fold2', 'pubmed_qa_labeled_fold3', 'pubmed_qa_labeled_fold4',
+                                 'pubmed_qa_labeled_fold5', 'pubmed_qa_labeled_fold6', 'pubmed_qa_labeled_fold7',
+                                 'pubmed_qa_labeled_fold8', 'pubmed_qa_labeled_fold9']}
 
     for dataset_loader in tqdm(
             get_all_dataloaders_for_task(Tasks.QUESTION_ANSWERING),
@@ -530,20 +537,16 @@ def get_all_qa_datasets() -> List[SingleDataset]:
     ):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
-        if (
-                ("mediqa_qa" == dataset_name)  # empty context
-                or ("biology_how_why_corpus" == dataset_name)  # empty context
-                or ("med_qa" == dataset_name)  # non-English
-                or ("bioasq_task_b" == dataset_name)  # local dataset
-        ):
+        if dataset_name in ignored_qa_datasets:
             continue
 
         module = datasets.load.dataset_module_factory(str(dataset_loader))
         builder_cls = datasets.load.import_main_class(module.module_path)
-        all_bigbio_config_names = [el.name for el in builder_cls.BUILDER_CONFIGS if
-                            'bigbio_qa' in el.name and 'unlabel' not in el.name]
+        bigbio_config_names = [subset_id +"bigbio_qa" for subset_id in ds_subset_id[dataset_name]] \
+            if dataset_name in ds_subset_id.keys() else [el.name for el in builder_cls.BUILDER_CONFIGS if 'bigbio_qa']
 
-        for bigbio_config_name in all_bigbio_config_names:
+        for bigbio_config_name in bigbio_config_names:
+
             try:
                 dataset = datasets.load_dataset(
                     str(dataset_loader), name=bigbio_config_name
@@ -563,7 +566,7 @@ def get_all_qa_datasets() -> List[SingleDataset]:
             for split_name, split in new_dataset.items():
                 new_dataset[split_name] = subsample_negative(split)
             #TODO: write solution for meta information
-            meta = get_classification_meta(dataset=new_dataset, name=bigbio_config_name +"_CLF")
+            meta = get_classification_meta(dataset=new_dataset, name=bigbio_config_name[:-10] +"_CLF")
             qa_clf_datasets.append(SingleDataset(new_dataset, meta=meta))
 
             # If the dataset is MCQA, create MaChamp sequence format
@@ -579,7 +582,7 @@ def get_all_qa_datasets() -> List[SingleDataset]:
                 new_dataset = new_dataset.filter(is_valid_qa)
                 # for split_name, split in new_dataset.items():
                 #     new_dataset[split_name] = subsample_negative(split)
-                meta = get_classification_meta(dataset=new_dataset, name=bigbio_config_name+"_SEQ")
+                meta = get_classification_meta(dataset=new_dataset, name=bigbio_config_name[:-10]+"_SEQ")
                 qa_seq_datasets.append(SingleDataset(new_dataset, meta=meta))
 
         if DEBUG:
