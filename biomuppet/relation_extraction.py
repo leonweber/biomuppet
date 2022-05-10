@@ -178,7 +178,6 @@ def get_all_re_datasets() -> List[SingleDataset]:
                 or "2011_rel" in dataset_name
                 or "2013_ge" in dataset_name
                 or "cdr" in dataset_name
-                or "mlee" in dataset_name
         ):
             continue
 

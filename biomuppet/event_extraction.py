@@ -9,6 +9,7 @@ from tqdm import tqdm
 import itertools
 
 from biomuppet.classification import get_classification_meta
+from biomuppet.relation_extraction import is_valid_re
 from biomuppet.utils import (
     overlaps,
     SingleDataset,
@@ -17,11 +18,6 @@ from biomuppet.utils import (
 )
 
 FAILING_QA = ["pcr", "bionlp_st_2013_ge", "bionlp_st_2013_gro"]
-
-
-def is_valid_re(example) -> bool:
-    text = example["text"]
-    return text.count("$") >= 2 and text.count("@") >= 2
 
 
 def insert_consistently(offset, insertion, text, starts, ends):
@@ -234,7 +230,7 @@ def get_all_ee_as_re_datasets() -> List[SingleDataset]:
 
     dataset_loaders = get_all_dataloaders_for_task(Tasks.EVENT_EXTRACTION)
 
-    for dataset_loader in tqdm(dataset_loaders, desc="Preparing RE datasets"):
+    for dataset_loader in tqdm(dataset_loaders, desc="Preparing EE-RE datasets"):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
         if dataset_name in FAILING_QA:
@@ -273,7 +269,7 @@ if __name__ == "__main__":
 
     config = {}
 
-    out = Path("machamp/data/bigbio/")
+    out = Path("machamp/data/bigbio/event_extraction")
     out.mkdir(exist_ok=True, parents=True)
 
     for dataset in tqdm(ee_as_re_datasets):
@@ -285,12 +281,12 @@ if __name__ == "__main__":
         }
 
         ### Generate validation split if not available
-        if "valid" not in dataset.data:
+        if "validation" not in dataset.data:
             train_valid = dataset.data["train"].train_test_split(test_size=0.1)
             dataset.data = DatasetDict(
                 {
                     "train": train_valid["train"],
-                    "valid": train_valid["test"],
+                    "validation": train_valid["test"],
                 }
             )
 
@@ -308,7 +304,7 @@ if __name__ == "__main__":
 
         ### Write validation file
         with (out / dataset.name).with_suffix(".valid").open("w", encoding="utf8") as f:
-            for example in dataset.data["valid"]:
+            for example in dataset.data["validation"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
                     continue

@@ -62,7 +62,6 @@ def get_all_classification_datasets() -> List[SingleDataset]:
                 or "hallmarks" in dataset_name
                 or "nlmchem" in dataset_name
                 or "bc7_litcovid" in dataset_name
-                or "chemdner" in dataset_name
         ):
             continue
 

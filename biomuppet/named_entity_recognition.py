@@ -27,6 +27,8 @@ from biomuppet.utils import DatasetMetaInformation, SingleDataset, get_all_datal
 # Define tokenizer globally
 tokenizer = SpaceTokenizer()
 
+DEBUG = False
+
 # Skip non-english, local dataset, and problematic dataset
 ignored_datasets = [
     'n2c2_2018_track2', 'n2c2_2018_track1', 'n2c2_2011', 'n2c2_2010',
@@ -82,7 +84,8 @@ def get_sequence_labelling_meta(dataset, name):
         id_to_label=idx_to_label,
         label_to_id=label_to_idx,
         type=task_type,
-        name=name
+        name=name,
+        entropy=None
     )
 
 def get_biodataset_metadata():
@@ -328,8 +331,52 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                     ner_datasets.append(SingleDataset(dataset, meta))
                 except Exception as ve:
                     print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")
-        if DEBUG:
-            if idx >= 3:
-                break
+        if DEBUG and len(ner_datasets):
+            break
 
     return ner_datasets
+
+if __name__ == '__main__':
+    ner_datasets = get_all_ner_datasets()
+    config = {}
+    out = Path("machamp/data/bigbio/named_entity_recognition")
+    out.mkdir(exist_ok=True, parents=True)
+
+    for dataset in tqdm(ner_datasets):
+        if not "train" in dataset.data:
+            continue
+
+        print(f'Saving `{dataset.meta.name}`')
+        config[dataset.meta.name] = {
+            "train_data_path": str((out / dataset.meta.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.meta.name).with_suffix(".valid")),
+            "word_idx": 0,
+            "tasks": {
+                dataset.meta.name: {
+                    "column_idx": 1,
+                    "task_type": "seq"
+                }
+            }
+        }
+
+        ### Generate validation split if not available
+        if not "validation" in dataset.data:
+            train_valid = dataset.data["train"].train_test_split(test_size=0.1, seed=0)
+            dataset.data = DatasetDict({
+                "train": train_valid["train"],
+                "validation": train_valid["test"],
+            })
+
+            ### Write train file
+        with (out / dataset.meta.name).with_suffix(".train").open("w") as f:
+            for example in dataset.data["train"]:
+                for word, label in example['conll']:
+                    f.write(word + "\t" + label + "\n")
+                f.write( "\n")
+
+        ### Write validation file
+        with (out / dataset.meta.name).with_suffix(".valid").open("w") as f:
+            for example in dataset.data["validation"]:
+                for word, label in example['conll']:
+                    f.write(word + "\t" + label + "\n")
+                f.write( "\n")
