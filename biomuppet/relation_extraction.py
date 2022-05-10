@@ -1,3 +1,4 @@
+import multiprocessing
 from collections import defaultdict
 from pathlib import Path
 from typing import List
@@ -171,12 +172,11 @@ def get_all_re_datasets() -> List[SingleDataset]:
         dataset_name = Path(dataset_loader).with_suffix("").name
 
         if (
-                "lll" in dataset_name
-                or "chemprot" in dataset_name
-                or "pdr" in dataset_name
+                "pdr" in dataset_name
                 or "2011_rel" in dataset_name
                 or "2013_ge" in dataset_name
                 or "cdr" in dataset_name
+                or "mlee" in dataset_name
         ):
             continue
 
@@ -188,12 +188,13 @@ def get_all_re_datasets() -> List[SingleDataset]:
             print(f"Skipping {dataset_loader} because of {ve}")
             continue
 
-        dataset = dataset.map(split_sentences)
+        dataset = dataset.map(split_sentences, num_proc=multiprocessing.cpu_count())
         dataset = dataset.map(
             re_to_classification,
             batched=True,
             batch_size=1,
             remove_columns=dataset["train"].column_names,
+            num_proc=multiprocessing.cpu_count()
         )
         dataset = dataset.filter(is_valid_re)
 

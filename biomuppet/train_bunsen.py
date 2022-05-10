@@ -30,12 +30,14 @@ from bigbio.utils.constants import Tasks
 from biomuppet.classification import get_all_classification_datasets
 from biomuppet.coreference_resolution import get_all_coref_datasets
 from biomuppet.relation_extraction import get_all_re_datasets
+from biomuppet.semantic_textual_similarity import get_all_sts_datasets
 
 pl.seed_everything(42)
 
-NUM_GPUS = 1
+NUM_GPUS = 4
 GRADIENT_ACCUMULATION = 1
 BATCH_SIZE = 32
+SAVE_STEPS = 5000
 MAX_STEPS = 140000 * GRADIENT_ACCUMULATION
 
 def print_average_task_mixing(dataloader, num_samples=1):
@@ -255,17 +257,17 @@ class BioMuppet(pl.LightningModule):
             f1 = self.dataset_to_dev_f1[meta.name]
             TASK_TYPE_TO_SCORE[meta.type](logits, labels, meta, f1)
 
-    def training_epoch_end(self, outputs) -> None:
-        f1_sum = 0
-        for dataset, train_f1 in self.dataset_to_train_f1.items():
-            if train_f1.tp + train_f1.fp + train_f1.fn > 0:
-                self.log(f"{dataset}/train/f1_epoch", train_f1, prog_bar=False)
-                f1_sum += train_f1
-        self.log(f"total/train/f1_epoch", f1_sum.cuda().compute(), prog_bar=True)
+    # def training_epoch_end(self, outputs) -> None:
+    #     f1_sum = 0
+    #     for dataset, train_f1 in self.dataset_to_train_f1.items():
+    #         if train_f1.tp + train_f1.fp + train_f1.fn > 0:
+    #             self.log(f"{dataset}/train/f1_epoch", train_f1, prog_bar=False)
+    #             f1_sum += train_f1
+    #     self.log(f"total/train/f1_epoch", f1_sum.cuda().compute(), prog_bar=True)
 
     def validation_epoch_end(self, outputs) -> None:
         f1_sum = 0
-        for dataset, dev_f1 in self.dataset_to_dev_f1.items():
+        for dataset, dev_f1 in tqdm(list(self.dataset_to_dev_f1.items())):
             if dev_f1.tp + dev_f1.fp + dev_f1.fn > 0:
                 self.log(f"{dataset}/dev/f1_epoch", dev_f1, prog_bar=False)
                 f1_sum += dev_f1
@@ -283,7 +285,7 @@ class BioMuppet(pl.LightningModule):
                     for n, p in self.named_parameters()
                     if not any(nd in n for nd in no_decay)
                 ],
-                "weight_decay": 0.001,
+                "weight_decay": 0.01,
             },
             {
                 "params": [
@@ -328,15 +330,23 @@ if __name__ == '__main__':
 
 
     tokenizer = AutoTokenizer.from_pretrained("michiyasunaga/BioLinkBERT-base")
-    train_datasets = []
-    train_datasets += get_all_re_datasets()
-    train_datasets += get_all_classification_datasets()
-    train_datasets += get_all_coref_datasets()
-    for dataset in train_datasets:
+    re_datasets = get_all_re_datasets()
+    text_datasets = get_all_classification_datasets()
+    coref_datasets = get_all_coref_datasets()
+    sts_datasets = get_all_sts_datasets()
+
+    all_datasets = []
+    for dataset in re_datasets + text_datasets + coref_datasets:
         columns_to_remove = [column for column in dataset.data["train"].column_names if column != "labels"]
         dataset.data = dataset.data.map(lambda x: tokenizer(x["text"], max_length=512, truncation=True), batched=True, remove_columns=columns_to_remove)
+        all_datasets.append(dataset)
 
-    dataset_to_meta = {i.meta.name: i.meta for i in train_datasets}
+    for dataset in sts_datasets:
+        columns_to_remove = [column for column in dataset.data["train"].column_names if column != "labels"]
+        dataset.data = dataset.data.map(lambda x: tokenizer(text=x["text_1"], text_pair=x["text_2"], max_length=512, truncation=True), batched=True, remove_columns=columns_to_remove)
+        all_datasets.append(dataset)
+
+    dataset_to_meta = {i.meta.name: i.meta for i in all_datasets}
 
     if args.load_checkpoint:
         model = BioMuppet.load_from_checkpoint(
@@ -357,13 +367,14 @@ if __name__ == '__main__':
 
 
     callbacks = []
-    callbacks.append(ModelCheckpoint(dirpath=args.output_dir, every_n_train_steps=5000,
+    callbacks.append(ModelCheckpoint(dirpath=args.output_dir,
+                                     every_n_train_steps=SAVE_STEPS,
                                      save_top_k=-1))
     callbacks.append(LearningRateMonitor(logging_interval="step"))
 
     mixed_train_instances = []
     if not args.eval_only:
-        for dataset in tqdm(train_datasets):
+        for dataset in tqdm(all_datasets):
             mixed_train_instances.extend(dataset)
 
         train_loader = DataLoader(
@@ -374,13 +385,14 @@ if __name__ == '__main__':
         )
 
     mixed_dev_instances = []
-    for dataset in train_datasets:
+    for dataset in all_datasets:
         if 'validation' in dataset.data:
             dataset.split = "validation"
-            mixed_dev_instances.extend(dataset)
+            if len(dataset) > 1000:
+                mixed_dev_instances.extend(random.sample(list(dataset), 1000))
+            else:
+                mixed_dev_instances.extend(dataset)
             dataset.split = "train"
-
-
 
     dev_loader = DataLoader(
         dataset=mixed_dev_instances,
@@ -398,13 +410,14 @@ if __name__ == '__main__':
     trainer = pl.Trainer(gpus=NUM_GPUS, strategy="ddp", precision=16,
                          callbacks=callbacks,
                          accumulate_grad_batches=GRADIENT_ACCUMULATION,
-                         logger=logger, max_steps=MAX_STEPS, gradient_clip_val=5)
+                         logger=logger, max_steps=MAX_STEPS, gradient_clip_val=5,
+                         )
     model.num_training_steps = MAX_STEPS
 
     if not args.eval_only:
-        print(f"Training on {len(train_datasets)} datasets with a total of {len(mixed_train_instances)} training instances...")
+        print(f"Training on {len(all_datasets)} datasets with a total of {len(mixed_train_instances)} training instances...")
         trainer.fit(
-            model=model, train_dataloaders=train_loader
+            model=model, train_dataloaders=train_loader,
         )
     if args.eval_only:
         trainer.validate(

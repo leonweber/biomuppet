@@ -1,4 +1,5 @@
 import itertools
+import multiprocessing
 from functools import partial
 from pathlib import Path
 from typing import List
@@ -50,12 +51,13 @@ def get_all_coref_datasets() -> List[SingleDataset]:
             print(f"Skipping {dataset_loader} because of {ve}")
             continue
 
-        dataset = dataset.map(split_sentences)
+        dataset = dataset.map(split_sentences, num_proc=multiprocessing.cpu_count())
         dataset = dataset.map(coref_to_re).map(
             partial(re_to_classification, mask_entities=False),
             batched=True,
             batch_size=1,
             remove_columns=dataset["train"].column_names,
+            num_proc=multiprocessing.cpu_count()
         )
 
         dataset = dataset.filter(is_valid_re)

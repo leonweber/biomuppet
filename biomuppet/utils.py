@@ -8,7 +8,7 @@ import datasets
 from bigbio.utils.constants import Tasks
 from flair.tokenization import SegtokSentenceSplitter
 
-DEBUG = True
+DEBUG = False
 
 
 @dataclasses.dataclass
