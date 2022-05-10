@@ -4,7 +4,8 @@ import bigbio
 from pathlib import Path
 from datasets import load_dataset
 from datasets.dataset_dict import DatasetDict
-from typing import List
+from typing import List, Dict, Set
+from nltk.tokenize import sent_tokenize
 
 # Train/Dev/Test Values from: https://microsoft.github.io/BLURB/tasks.html#dataset_chemprot
 BLURB_datasets = {
@@ -46,7 +47,7 @@ BLURB2BB = {
     "BC5CDR-chem_hf": None,
     "BC5CDR-disease_hf": "bc5cdr",
     "NCBI-disease_hf": "ncbi_disease",
-    "BC2GM_hf": None,
+    "BC2GM_hf": "gnormplus",
     "JNLPBA_hf": None,
     "ebmnlp_hf": "ebm_pico",
     "chemprot_hf": "chemprot",
@@ -59,17 +60,22 @@ BLURB2BB = {
     "bioasq_hf": "bioasq_task_b",
 }
 
-bb_configs = {
-    "bc5cdr": ["bc5cdr_bigbio_kb"],
-    "ncbi_disease": ["ncbi_disease_bigbio_kb"],
-    "ebm_pico": ["ebm_pico_bigbio_kb"],
-    "chemprot": ["chemprot_shared_task_eval_source", "chemprot_bigbio_kb"],
-    "ddi_corpus": ["ddi_corpus_bigbio_kb"],
-    "biosses": ["biosses_bigbio_pairs"],
-    "hallmarks_of_cancer": ["hallmarks_of_cancer_bigbio_text"],
-    "pubmed_qa": ["pubmed_qa_labeled_fold" + str(i) for i in range(1, 11)],
-    "bioasq_task_b": ["bioasq_7b_bigbio_qa"],
-}
+#bb_configs = {
+#    "bc5cdr": ["bc5cdr_bigbio_kb"],
+#    "gnormplus": ["gnormplus_bigbio_kb"]
+#    "ncbi_disease": ["ncbi_disease_bigbio_kb"],
+#    "ebm_pico": ["ebm_pico_bigbio_kb"],
+#    "chemprot": ["chemprot_bigbio_kb"], # "chemprot_shared_task_eval_source", 
+#    "ddi_corpus": ["ddi_corpus_bigbio_kb"],
+#    "biosses": ["biosses_bigbio_pairs"],
+#    "hallmarks_of_cancer": ["hallmarks_of_cancer_bigbio_text"],
+#    "pubmed_qa": ["pubmed_qa_labeled_fold" + str(i) for i in range(1, 11)],
+#    "bioasq_task_b": ["bioasq_7b_bigbio_qa"],
+#}
+
+# ------------------------- #
+# BLURB dataset fxns
+# ------------------------- #
 
 def get_link_preprocessed_data(datapath: Path) -> DatasetDict:
     """Gets pre-processed data from LINKBERT.
@@ -84,10 +90,17 @@ def get_name(dpath: Path) -> str:
     return dpath.__str__().split("/")[-1]
 
 def get_blurb_size(data: DatasetDict) -> List[int]:
+    """Compute number of examples in each key"""
     return [data[key].num_rows for key in data.keys()]
 
+def get_blurb_sentences(data: DatasetDict) -> Dict[str, Set[str]]:
+    """Get sentences from each training split"""
+    return {key: set(data[key]["sentence"]) for key in data.keys()}
 
-def get_bigbio_dataset(dpath: Path, name: str) -> DatasetDict:
+# ------------------------- #
+# BigBio dataset fxns
+# ------------------------- #
+def get_bigbio_dataset(dpath: Path, name: str) -> List[DatasetDict]:
     """Retrieve BigBio Dataset, given name"""
     bbname = BLURB2BB[name] 
 
@@ -97,6 +110,24 @@ def get_bigbio_dataset(dpath: Path, name: str) -> DatasetDict:
         dsetname = bbname + ".py"
         dpath = dpath / bbname / dsetname
         return [load_dataset(dpath.__str__(), name=c) for c in bb_configs[bbname]]
+
+
+def split_sentences(data: List[List[Dict[str, str]]]) -> Set[str]:
+    """Given passages in a dataset, split into sentences
+
+    data: A given data split "passages" argument in the BB schema (ex: biodata["train"]["passages"])
+    """
+    sents = set()
+    if len(data):
+        for psg in data:
+            if len(psg):
+                s = " ".join([" ".join(i["text"]) for i in psg])  # Smush all sentences together
+                sents = sents.union(set(sent_tokenize(s)))
+    return sents
+
+def get_bigbio_sentences():
+    """Return key: sentence"""
+    pass
 
 
 if __name__ == "__main__":
@@ -114,4 +145,4 @@ if __name__ == "__main__":
         bdata = get_link_preprocessed_data(dpath)
         assert(get_blurb_size(bdata) == BLURB_datasets[name], "Issue with " + name)
 
-        bbiodata = get_bigbio_dataset(bigbio_path, name)
+        #bbiodata = get_bigbio_dataset(bigbio_path, name)
