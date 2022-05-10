@@ -22,7 +22,7 @@ import multiprocessing
 import bigbio
 from bigbio.utils.constants import Tasks
 
-from biomuppet.utils import DatasetMetaInformation, SingleDataset, get_all_dataloaders_for_task, DEBUG
+from biomuppet.utils import DatasetMetaInformation, SingleDataset, get_all_dataloaders_for_task, split_sentences, DEBUG
 
 # Define tokenizer globally
 tokenizer = SpaceTokenizer()
@@ -252,6 +252,7 @@ def bigbio_ner_to_conll(sample):
                 sentence = passage.replace('\t',' ').replace('\n',' ')
                 for token in tokenizer.tokenize(sentence):
                     conll_data.append((token, 'O'))
+            conll_data.append(('\n', '\n')) # Chunk data between sentence
             p_idx += 1
             passage = sample['passages'][p_idx]['text'][0].replace('\t',' ').replace('\n',' ')
             p_offset = passage_offsets[p_idx]
@@ -304,11 +305,10 @@ def get_all_ner_datasets() -> List[SingleDataset]:
         if dataset_name in dataset_to_name_subset_map:
             for name, subset_id in dataset_to_name_subset_map[dataset_name]:
                 try:
-                    print(f'datasets.load_dataset({dataset_loader}, name={name}, subset_id={subset_id})')
                     dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
+                    dataset = dataset.map(split_sentences, num_proc=multiprocessing.cpu_count() * 2)
                     dataset = dataset.map(bigbio_ner_to_conll,
                         remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations'],
-                        load_from_cache_file=False,
                         num_proc=multiprocessing.cpu_count() * 2
                     )
                     meta = get_sequence_labelling_meta(dataset, f"{name.replace('_bigbio_kb','')}_ner")
@@ -320,18 +320,17 @@ def get_all_ner_datasets() -> List[SingleDataset]:
                 if 'bigbio_kb' not in schema:
                     continue
                 try:
-                    print(f'datasets.load_dataset({dataset_loader}, name={name}, subset_id={subset_id})')
                     dataset = datasets.load_dataset(str(dataset_loader), name=name, subset_id=subset_id)
+                    dataset = dataset.map(split_sentences, num_proc=multiprocessing.cpu_count() * 2)
                     dataset = dataset.map(bigbio_ner_to_conll, 
                         remove_columns=['passages', 'entities', 'events', 'coreferences', 'relations'],
-                        load_from_cache_file=False,
                         num_proc=multiprocessing.cpu_count() * 2
                     )
                     meta = get_sequence_labelling_meta(dataset, f"{name.replace('_bigbio_kb','')}_ner")
                     ner_datasets.append(SingleDataset(dataset, meta))
                 except Exception as ve:
                     print(f"Skipping {dataset_loader} (name: {name}, subset_id:: {subset_id}) because of {ve}")
-        if DEBUG and len(ner_datasets):
+        if DEBUG and len(ner_datasets) >= 5:
             break
 
     return ner_datasets
