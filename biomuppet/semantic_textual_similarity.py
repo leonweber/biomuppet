@@ -1,3 +1,4 @@
+import json
 from functools import partial
 from pathlib import Path
 from typing import List
@@ -5,12 +6,12 @@ from typing import List
 import datasets
 import numpy as np
 from bigbio.utils.constants import Tasks
+from datasets import DatasetDict
 from tqdm import tqdm
 from bisect import bisect
 
 from biomuppet.classification import get_classification_meta
-from biomuppet.utils import SingleDataset, get_all_dataloaders_for_task, DEBUG, \
-    DatasetMetaInformation
+from biomuppet.utils import SingleDataset, get_all_dataloaders_for_task, DEBUG
 
 
 def get_percentile_bins(dataset):
@@ -102,3 +103,42 @@ def get_all_sts_datasets() -> List[SingleDataset]:
             break
 
     return sts_datasets
+
+if __name__ == '__main__':
+    sts_datasets = get_all_sts_datasets()
+    config = {}
+    out = Path("machamp/data/bigbio/sts")
+    out.mkdir(exist_ok=True, parents=True)
+    for dataset in tqdm(sts_datasets):
+        config[dataset.meta.name] = {
+            "train_data_path": str((out / dataset.meta.name).with_suffix(".train")),
+            "validation_data_path": str((out / dataset.meta.name).with_suffix(".valid")),
+            "sent_idxs": [0,1],
+            "tasks": {
+                dataset.meta.name: {
+                    "column_idx": 2,
+                    "task_type": "classification"
+                }
+            }
+        }
+
+        ### Generate validation split if not available
+        if not "valid" in dataset.data:
+            train_valid = dataset.data["train"].train_test_split(test_size=0.1)
+            dataset.data = DatasetDict({
+                "train": train_valid["train"],
+                "valid": train_valid["test"],
+            })
+
+        def flatten_labels(example):
+            example['labels'] = example['labels'][0]
+            return example
+
+        dataset.data = dataset.data.map(flatten_labels)
+        dataset.data["train"].to_csv((out / dataset.meta.name).with_suffix(".train"), sep="\t", index=None, header=None)
+        dataset.data["valid"].to_csv((out / dataset.meta.name).with_suffix(".valid"), sep="\t", index=None, header=None)
+
+
+    ## Write Machamp config
+    with open(out / "config.json", "w") as f:
+        json.dump(config, f, indent=1)

@@ -6,12 +6,13 @@ from collections import defaultdict
 from functools import partial
 from pathlib import Path
 from typing import List
+from nltk.tokenize import WordPunctTokenizer
 import importlib.util
 from inspect import getmembers
 
 import datasets
 from datasets import DatasetDict
-from flair.tokenization import SegtokSentenceSplitter
+from flair.tokenization import SegtokSentenceSplitter, SpacySentenceSplitter
 from tqdm import tqdm
 import numpy as np
 
@@ -40,6 +41,20 @@ class DatasetMetaInformation:
 def is_valid_re(example) -> bool:
     text = example["text"]
     return text.count("$") >= 2 and text.count("@") >= 2
+
+def is_valid_qa(example) -> bool:
+    """
+    Return non-empty text
+    :param example:
+    :return:
+    """
+    if "text" in example.keys():
+        text = example["text"]
+        return len(text) >=1
+    else:
+        sequence = example["sequence"]
+        return len(sequence) >=1
+
 
 def insert_consistently(offset, insertion, text, starts, ends):
     new_text = text[:offset] + insertion + text[offset:]
@@ -153,6 +168,16 @@ def insert_pair_markers(text, head, tail, passage_offset, mask_entities=True):
 
     return text
 
+def is_seq_answer(seq, answer):
+    """
+    Returns boolean if there's a match between seq and answer
+    :param seq:
+    :param answer:
+    :return:
+    """
+    if seq.strip().lower() == answer.strip().lower():
+        return True
+
 
 def coref_to_re(example):
     example["relations"] = []
@@ -203,6 +228,80 @@ def re_to_classification(example, mask_entities=True):
                 new_example["labels"].append(labels)
 
     return new_example
+
+#TODO: Transform QA to classification
+def qa_to_classification(example):
+    """
+    Function that converts yesno and multiple choice QA to MaChamp classification
+    :param example:
+    :param mask_entities:
+    :return:
+    """
+    if example["type"][0] == "yesno":
+        new_example = {"text": [""], "labels": [[""]]}
+        context = example["context"][0].strip().replace("\t", " ").replace("\n", " ")
+        question = example["question"][0].strip().replace("\t", " ").replace("\n", " ")
+        composite_text = context + " " + "[SEP]" + " " + question
+        labels = [example["answer"][0][0].strip().replace("\t", " ").replace("\n", " ")]
+        new_example["text"].append(composite_text)
+        new_example["labels"].append(labels)
+        return new_example
+
+    elif example["type"][0] == "multiple_choice":
+        new_example = {"text": [""], "labels": [[""]]}
+        context = example["context"][0].strip().replace("\t", " ").replace("\n", " ")
+        question = example["question"][0].strip().replace("\t", " ").replace("\n", " ")
+        answer = example["answer"][0][0].strip().replace("\t", " ").replace("\n", " ")
+        for choice in example["choices"][0]:
+            answer_prompt = "Answer : {}".format(choice)
+            composite_text = context + " " + "[SEP]" + " " + question + " " + answer_prompt
+            if answer.lower() == choice.lower():
+                labels = ["yes"]
+            else:
+                labels = ["no"]
+            new_example["text"].append(composite_text)
+            new_example["labels"].append(labels)
+        return new_example
+
+    else:
+        return
+
+
+
+#TODO: transforming QA to multiple choice
+def qa_to_sequence(example):
+    """
+    Function that converts MCQA to MaChamp sequence
+    Currently only converts data that has answer exactly matches that in the prompt
+
+    1. Assert type =="multiple choice"
+    2. Format sequence: tokens of the words (separated by empty line between samples)
+    3. Format labels: [] or [answer]
+
+    """
+    if example["type"][0] != "multiple_choice":
+        return
+    else:
+        new_example = {"sequence": [[""]], "labels": [[""]]}
+        tokenizer = WordPunctTokenizer()
+        context_seq = tokenizer.tokenize(example["context"][0].lower().strip().replace("\t", " ").replace("\n", " "))
+        question_seq = tokenizer.tokenize(example["question"][0].lower().strip().replace("\t", " ").replace("\n", " "))
+        sequence = context_seq + question_seq
+
+        # Look for exact matches firstly:
+        ans =example['answer'][0][0].lower().strip().replace("\t", " ").replace("\n", " ")
+        if ans in sequence:
+            labels = [["answer"] if (ans == seq) else [""] for seq in sequence]
+            new_example["sequence"].extend([[seq] for seq in sequence])
+            new_example["labels"].extend(labels)
+            # Add new line to differentiate examples
+            new_example["sequence"].extend([["\n"]])
+            new_example["labels"].extend([["\n"]])
+            return new_example
+        # Currently doesn't deal with "soft matching" cases
+        # TODO: implement when multiple choice answers "soft match" in the form used in the prompt
+        else:
+            return new_example
 
 
 def get_classification_meta(dataset, name):
@@ -410,75 +509,92 @@ def get_all_coref_datasets() -> List[SingleDataset]:
 
         if DEBUG:
             break
-        
+
     return coref_datasets
 
-def get_all_sts_datasets() -> List[SingleDataset]:
-    sts_datasets = []
+
+def get_all_qa_datasets() -> List[SingleDataset]:
+    """
+    Function that transforms QA dataset to MaChamp format;
+    Transforms ALL QA dataset with yesno and multiple choice --> MaChamp classification
+    Transforms some QA datasest with multiple choice that has exact match between answer and the prompt --> MaChamp
+    Sequence
+    Currenctly pulls biomrc, medhop, pubmed_qa, sciq. biomrc, pubmed_qa has subset_ids
+    :return: qa_datasets
+    """
+    qa_clf_datasets = []
+    qa_seq_datasets = []
+    ignored_qa_datasets = ["mediqa_qa","biology_how_why_corpus", "med_qa", "bioasq_task_b"]
+    ds_subset_id = {'biomrc':['biomrc_large_B', 'biomrc_small_B', 'biomrc_tiny_B' ],
+                    'pubmed_qa':['pubmed_qa_artificial', 'pubmed_qa_labeled_fold0', 'pubmed_qa_labeled_fold1',
+                                 'pubmed_qa_labeled_fold2', 'pubmed_qa_labeled_fold3', 'pubmed_qa_labeled_fold4',
+                                 'pubmed_qa_labeled_fold5', 'pubmed_qa_labeled_fold6', 'pubmed_qa_labeled_fold7',
+                                 'pubmed_qa_labeled_fold8', 'pubmed_qa_labeled_fold9']}
 
     for dataset_loader in tqdm(
-            get_all_dataloaders_for_task(Tasks.SEMANTIC_SIMILARITY),
-            desc="Preparing STS datasets",
+            get_all_dataloaders_for_task(Tasks.QUESTION_ANSWERING),
+            desc="Preparing QA datasets",
     ):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
-        if "pubhealth" in dataset_name: # not sts but classification fixed in #545 (not yet merged)
+        if dataset_name in ignored_qa_datasets:
             continue
-        elif "bio_simlex" in dataset_name: # label contains \n fixed in #541 (not yet merged)
-            continue
-        elif "umnsrs" in dataset_name: # mayor flaws (not downloadable) fixed in #538 (not yet merged)
-            continue
-        
 
-        
-        dataset = datasets.load_dataset(
-            str(dataset_loader), name=f"{dataset_name}_bigbio_pairs"
-        )
+        module = datasets.load.dataset_module_factory(str(dataset_loader))
+        builder_cls = datasets.load.import_main_class(module.module_path)
+        bigbio_config_names = [subset_id +"bigbio_qa" for subset_id in ds_subset_id[dataset_name]] \
+            if dataset_name in ds_subset_id.keys() else [el.name for el in builder_cls.BUILDER_CONFIGS if 'bigbio_qa']
 
-        def replace_(example):
-            example["text_1"] = example["text_1"].strip().replace("\t", " ").replace("\n", " ")
-            example["text_2"] = example["text_2"].strip().replace("\t", " ").replace("\n", " ")
-            return example
+        for bigbio_config_name in bigbio_config_names:
 
-        def label_asserts_(example):
+            try:
+                dataset = datasets.load_dataset(
+                    str(dataset_loader), name=bigbio_config_name
+                )
+            except ValueError as ve:
+                print(f"Skipping {dataset_loader} because of {ve}")
+                continue
 
-            if dataset_name == "mqp":
-                label = int(example["label"])
-            else:
-                label = float(example["label"])
+            # convert all QA dataset to MaChamp classification and add as SingleDataset
+            new_dataset = dataset.map(
+                qa_to_classification,
+                batched=True,
+                batch_size=1,
+                remove_columns=dataset["train"].column_names,
+            )
+            new_dataset = new_dataset.filter(is_valid_qa)
+            for split_name, split in new_dataset.items():
+                new_dataset[split_name] = subsample_negative(split)
+            #TODO: write solution for meta information
+            meta = get_classification_meta(dataset=new_dataset, name=bigbio_config_name[:-10] +"_CLF")
+            qa_clf_datasets.append(SingleDataset(new_dataset, meta=meta))
 
-            assert label >= 0, "Oh no"
-
-            # all datasets are range, except mqp (0/1)
-            if dataset_name == "biosses":
-                assert 0 <= label <= 4, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name in ["bio_simlex", "bio_sim_verb"]:
-                assert 0 <= label <= 10, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name == "ehr_rel":
-                assert 0 <= label <= 3, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name in ["minimayosrs", "mayosrs"]:
-                assert 1 <= label <= 10, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name == "mqp":
-                assert label == 0 or label== 1, f"Oh no {dataset_name} {example['label']}"
-            elif dataset_name == "umnsrs":
-                assert 0 <= label <= 1600, f"Oh no {dataset_name} {example['label']}"
-
-        dataset = dataset.map(replace_)
-        dataset = dataset.map(label_asserts_)
-        dataset = dataset.remove_columns(['id', "document_id"])
-        
-        sts_datasets.append(SingleDataset(dataset, name=dataset_name + "_sts"))
+            # If the dataset is MCQA, create MaChamp sequence format
+            # convert all QA dataset to MaChamp classification and add as SingleDataset
+            mcqa_dataset = dataset.filter(lambda x: x["type"]=="multiple_choice")
+            if mcqa_dataset.num_rows['train'] >0:
+                new_dataset = mcqa_dataset.map(
+                    qa_to_sequence,
+                    batched=True,
+                    batch_size=1,
+                    remove_columns=mcqa_dataset["train"].column_names,
+                )
+                new_dataset = new_dataset.filter(is_valid_qa)
+                # for split_name, split in new_dataset.items():
+                #     new_dataset[split_name] = subsample_negative(split)
+                meta = get_classification_meta(dataset=new_dataset, name=bigbio_config_name[:-10]+"_SEQ")
+                qa_seq_datasets.append(SingleDataset(new_dataset, meta=meta))
 
         if DEBUG:
             break
 
-    return sts_datasets
+    return qa_clf_datasets, qa_seq_datasets
 
 if __name__ == "__main__":
     re_datasets = get_all_re_datasets()
     coref_datasets = get_all_coref_datasets()
     classification_datasets = get_all_classification_datasets()
-    sts_datasets = get_all_sts_datasets()
+    qa_clf_datasets, qa_seq_datasets = get_all_qa_datasets()
 
     config = {}
 
@@ -489,20 +605,19 @@ if __name__ == "__main__":
 
     ## Process classification-type datasets
     ### Add to Machamp config
-    for dataset in tqdm(re_datasets + coref_datasets + classification_datasets):
-        config[dataset.name] = {
-            "train_data_path": str((out / dataset.name).with_suffix(".train")),
-            "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
+    for dataset in tqdm(re_datasets + coref_datasets + classification_datasets + qa_clf_datasets):
+        name = dataset.meta.name
+        config[name] = {
+            "train_data_path": str((out / name).with_suffix(".train")),
+            "validation_data_path": str((out / name).with_suffix(".valid")),
             "sent_idxs": [0],
             "tasks": {
-                dataset.name: {
+                name: {
                     "column_idx": 1,
                     "task_type": "classification"
                 }
             }
         }
-
-
         ### Generate validation split if not available
         if not "valid" in dataset.data:
             train_valid = dataset.data["train"].train_test_split(test_size=0.1)
@@ -512,9 +627,10 @@ if __name__ == "__main__":
             })
 
         ### Write train file
-        with (out / dataset.name).with_suffix(".train").open("w", encoding="utf8") as f:
+        with (out / name).with_suffix(".train").open("w") as f:
             for example in dataset.data["train"]:
-                text = example["text"].strip().replace("\t", " ").replace("\n", " ")
+                text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
+                    else example["sequence"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
                     continue
                 label = "|".join(sorted(example["labels"]))
@@ -524,9 +640,10 @@ if __name__ == "__main__":
                 f.write(text + "\t" + label + "\n")
 
         ### Write validation file
-        with (out / dataset.name).with_suffix(".valid").open("w", encoding="utf8") as f:
+        with (out / name).with_suffix(".valid").open("w") as f:
             for example in dataset.data["valid"]:
-                text = example["text"].strip().replace("\t", " ").replace("\n", " ")
+                text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
+                    else example["sequence"].strip().replace("\t", " ").replace("\n", " ")
                 if not text:
                     continue
                 label = "|".join(sorted(example["labels"]))
@@ -535,21 +652,19 @@ if __name__ == "__main__":
 
                 f.write(text + "\t" + label + "\n")
 
-    
-    for dataset in tqdm(sts_datasets):
-        # WRONG, none of them are classification, except mqp (0/1 dissimilar/similar)
-        config[dataset.name] = {
-            "train_data_path": str((out / dataset.name).with_suffix(".train")),
-            "validation_data_path": str((out / dataset.name).with_suffix(".valid")),
-            "sent_idxs": [0,1],
+    for dataset in tqdm(qa_seq_datasets):
+        name = dataset.meta.name
+        config[name] = {
+            "train_data_path": str((out / name).with_suffix(".train")),
+            "validation_data_path": str((out / name).with_suffix(".valid")),
+            "word_idxs": 0,
             "tasks": {
-                dataset.name: {
-                    "column_idx": 2,
-                    "task_type": "classification"
+                name: {
+                    "column_idx": 1,
+                    "task_type": "sequence"
                 }
             }
         }
-
         ### Generate validation split if not available
         if not "valid" in dataset.data:
             train_valid = dataset.data["train"].train_test_split(test_size=0.1)
@@ -557,9 +672,32 @@ if __name__ == "__main__":
                 "train": train_valid["train"],
                 "valid": train_valid["test"],
             })
-        
-        dataset.data["train"].to_csv((out / dataset.name).with_suffix(".train"), sep="\t", index=None, header=None)
-        dataset.data["valid"].to_csv((out / dataset.name).with_suffix(".valid"), sep="\t", index=None, header=None)
+
+        ### Write train file
+        with (out / name).with_suffix(".train").open("w") as f:
+            for example in dataset.data["train"]:
+                text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
+                    else example["sequence"][0].strip().replace("\t", " ").replace("\n", " ")
+                if not text:
+                    continue
+                label = "|".join(sorted(example["labels"]))
+                if not label.strip():
+                    label = "None"
+
+                f.write(text + "\t" + label + "\n")
+
+        ### Write validation file
+        with (out / name).with_suffix(".valid").open("w") as f:
+            for example in dataset.data["valid"]:
+                text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
+                    else example["sequence"][0].strip().replace("\t", " ").replace("\n", " ")
+                if not text:
+                    continue
+                label = "|".join(sorted(example["labels"]))
+                if not label.strip():
+                    label = "None"
+
+                f.write(text + "\t" + label + "\n")
 
 
     ## Write Machamp config

@@ -17,16 +17,21 @@ class DatasetMetaInformation:
     id_to_label: dict
     name: str
     type: str
+    entropy: float
 
     def to(self, device):
         return self
 
 
 class SingleDataset:
-    def __init__(self, data, meta, split="train"):
+    def __init__(self, data, meta: DatasetMetaInformation, split="train"):
         self.split = split
         self.data = data
         self.meta = meta
+
+    @property
+    def name(self):
+        return self.meta.name
 
     def __getitem__(self, item):
         example = self.data[self.split][item]
@@ -42,14 +47,16 @@ def overlaps(a, b):
     return max(0, min(a[1], b[1]) - max(a[0], b[0]))
 
 
-
+def clean_text(text):
+    return text.strip().replace("\t", " ").replace("\n", " ")
 
 def split_sentences(example):
     new_passages = []
 
     splitter = SegtokSentenceSplitter()
     for passage in example["passages"]:
-        for i, sentence in enumerate(splitter.split(passage["text"][0])):
+        passage_text = clean_text(passage["text"][0])
+        for i, sentence in enumerate(splitter.split(passage_text)):
             new_passages.append(
                 {
                     "id": passage["id"] + ".s" + str(i),
@@ -82,3 +89,6 @@ def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
 
     return dataset_loaders_for_task
 
+
+def clean_text(text):
+    return text.strip().replace("\t", " ").replace("\n", " ")
