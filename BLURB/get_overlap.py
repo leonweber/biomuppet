@@ -122,6 +122,7 @@ if __name__ == "__main__":
 
     # Get MACHAMP training data
     tasks = list(machamp_dir.glob("*/"))
+    tasks = [i for i in tasks if ".gitignore" not in i.__str__()]
 
     # For each task, compute the set of terms
     machamp_train = {}
