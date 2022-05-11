@@ -105,40 +105,6 @@ def get_machamp_data_per_task(datapath: Path, split: str) -> Dict[str, Set[str]]
     return {split: sents}
 
 
-# ------------------------- #
-# BigBio dataset fxns
-# DEPRECATED (2022.05.11) works directly on BB
-# ------------------------- #
-#def get_bigbio_dataset(dpath: Path, name: str) -> DatasetDict:
-#    """Retrieve BigBio Dataset, given name"""
-#    bbname = BLURB2BB[name] 
-#
-#    if bbname is None:
-#        return None
-#    else:
-#        dsetname = bbname + ".py"
-#        dpath = dpath / bbname / dsetname
-#        return load_dataset(dpath.__str__(), name=bb_configs[bbname])
-#
-#
-#def split_sentences(split: List[List[Dict[str, str]]]) -> Set[str]:
-#    """Given passages in a dataset, split into sentences
-#
-#    data: A given data split "passages" argument in the BB schema (ex: biodata["train"]["passages"])
-#    """
-#    sents = set()
-#    if len(split):
-#        for psg in split:
-#            if len(psg):
-#                s = " ".join([" ".join(i["text"]) for i in psg])  # Smush all sentences together
-#                sents = sents.union(set(sent_tokenize(s)))
-#    return sents
-
-#def get_bigbio_sentences(data: DatasetDict) -> Dict[str, Set[str]]:
-#    """Return split: set of sentences for bigbio data"""
-#    return {key: split_sentences(data[key]["passages"]) for key in data.keys()}
-    
-
 def compute_overlap(blurb: Set[str], bbio: Set[str]) -> Set[str]:
     """Given 2 datasplits, compute set overlap between them"""
     return blurb.intersection(bbio)
