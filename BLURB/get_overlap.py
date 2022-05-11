@@ -22,7 +22,7 @@ from datasets.dataset_dict import DatasetDict
 from typing import List, Dict, Set
 from nltk.tokenize import sent_tokenize
 from constants import BLURB_datasets, text_pairs, ner_examples
-import gzip
+import gzip 
 import pickle as pkl
 
 # ------------------------- #
@@ -124,7 +124,7 @@ if __name__ == "__main__":
 
     # Get MACHAMP training data
     tasks = list(machamp_dir.glob("*/"))
-    tasks = [i for i in tasks if ".gitignore" not in i.__str__()]
+    tasks = [i for i in tasks if ".git" not in i.__str__()]
 
     # For each task, compute the set of terms
     machamp_train = {}
