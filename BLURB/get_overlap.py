@@ -22,7 +22,7 @@ from datasets.dataset_dict import DatasetDict
 from typing import List, Dict, Set
 from nltk.tokenize import sent_tokenize
 from constants import BLURB_datasets, text_pairs, ner_examples
-import gzip as gz
+import gzip
 import pickle as pkl
 
 # ------------------------- #
