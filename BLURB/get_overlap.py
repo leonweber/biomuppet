@@ -22,6 +22,8 @@ from datasets.dataset_dict import DatasetDict
 from typing import List, Dict, Set
 from nltk.tokenize import sent_tokenize
 from constants import BLURB_datasets, text_pairs, ner_examples
+import gzip as gz
+import pickle as pkl
 
 # ------------------------- #
 # BLURB dataset fxns
@@ -134,4 +136,20 @@ if __name__ == "__main__":
         machamp_train.update({tk_name: collect_machamp_data(tk, "train")})
         machamp_val.update({tk_name: collect_machamp_data(tk, "val")})
 
+    
+    with gzip.open("linkbert_blurb.gz.pkl", "wb") as f:
+        pkl.dump(blurb, f)
 
+    with gzip.open("linkbert_blurb_ner.gz.pkl", "wb") as f:
+        pkl.dump(blurb_ner, f)
+
+    with gzip.open("linkbert_blurb_text_pairs.gz.pkl", "wb") as f:
+        pkl.dump(blurb_text_pairs, f)
+
+    with gzip.open("machamp_train.gz.pkl", "wb") as f:
+        pkl.dump(machamp_train, f)
+
+    with gzip.open("machamp_val.gz.pkl", "wb") as f:
+        pkl.dump(machamp_val, f)
+
+    
