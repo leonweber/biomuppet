@@ -34,7 +34,7 @@ ignored_datasets = [
     'n2c2_2018_track2', 'n2c2_2018_track1', 'n2c2_2011', 'n2c2_2010',
     'n2c2_2009', 'n2c2_2008', 'n2c2_2006_smokers', 'n2c2_2006_deid',
     'psytar', 'swedish_medical_ner', 'quaero', 'pho_ner', 'ctebmsp',
-    'codiesp', 'pubtator_central', 'cord_ner'
+    'codiesp', 'pubtator_central', 'cord_ner', 'cantemist'
 ]
 
 # Dataset to name & subset_id mapping for special cases datasets
@@ -380,3 +380,8 @@ if __name__ == '__main__':
                 for word, label in example['conll']:
                     f.write(word + "\t" + label + "\n")
                 f.write( "\n")
+
+
+    ## Write Machamp config
+    with open(out / "config.json", "w") as f:
+        json.dump(config, f, indent=1)
