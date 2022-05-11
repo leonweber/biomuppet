@@ -1,20 +1,33 @@
 ### Setup
-This project requires `bigbio` package as the dependency. To install `bigbio` package, we can run:
+1. Install `bigbio`
 ```
-git clone git@github.com:bigscience-workshop/biomedical.git
-cd biomedical
-pip install -e ".[dev]"
+pip install git+https://github.com/bigscience-workshop/biomedical
 ```
-We can verify the installation is correct by executing `from bigbio.utils.constants import Tasks` in our python script.
-
-Since the existing data path is hardcoded, we also need to link the `biodatasets` folder from the [`biomedical`](https://github.com/bigscience-workshop/biomedical) repository. We can achieve that through by linking the folder with:
+2. Install our fork of `allennlp v 1.3` with [DDP + gradient accumulation patch](https://github.com/allenai/allennlp/pull/5100) backported
 ```
-ln -s <PATH_TO_BIOMEDICAL_DIRECTORY>/biodatasets ./biodatasets
+pip install git+https://github.com/leonweber/allennlp
 ```
-
-After setting the dependency, you can simply running the training code with:
+3. Uninstall the installed CPU pytorch and install GPU pytorch
 ```
-python train_biomuppet.py --output_dir <PATH_TO_RESULT_DIRECTORY>
+pip uninstall pytorch
+pip uninstall torch
+conda install pytorch==1.8.0 torchvision==0.9.0 torchaudio==0.8.0 cudatoolkit=11.1 -c pytorch -c conda-forge
+``` 
+5. Clone our fork of [Machamp](https://github.com/machamp-nlp/machamp):
+```
+git clone git@github.com:leonweber/machamp.git
+```
+6. Clone the biomuppet repository
+```
+git clone git@github.com:leonweber/biomuppet.git
+```
+7. Generate the machamp training data
+```
+cd biomuppet; bash generate_machamp_data.sh [MACHAMP_ROOT_PATH]
+```
+8. Run Machamp training
+```
+cd [MACHAMP_ROOT_PATH]; python train.py --dataset_config configs/bigbio_debug
 ```
 
 ### Project Documentation
