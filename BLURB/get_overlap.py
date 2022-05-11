@@ -12,7 +12,7 @@ Compare OVERLAPS:
     BLURB Train < -- > Test
     BLURB Train < -- > Train
 
-
+Switch to logging
 """
 import bigbio
 import pandas as pd
@@ -91,17 +91,19 @@ def collect_blurb_data(data_paths: List[Path]) -> Dict[str, Set[str]]:
 # Machamp pre-processed data fxns
 # ------------------------- #
 
-def collect_machamp_data(datapath: Path) -> DatasetDict:
-    pass
 
-def get_machamp_data_per_task(datapath: Path, split: str) -> Dict[str, Set[str]]:
+# TODO: maybe avoid pandas with just simple string parsing
+def collect_machamp_data(datapath: Path, split: str) -> Dict[str, Set[str]]:
     """Given a machamp task, construct a set of all sentences from all datasets in it
     """
     sents = set()
     for fname in datapath.glob("*." + split):
-        x = pd.read_csv(fname, sep="\t") # Two columns, space separated
-        sents = sents.union(set(x.iloc[:, 0].tolist()))
-    
+        try:
+            x = pd.read_csv(fname, sep="\t", header=None) # Two columns, space separated
+            sents = sents.union(set(x.iloc[:, 0].tolist()))
+        except pd.errors.EmptyDataError:
+            print("Issue with dataset", fname)
+
     return {split: sents}
 
 
@@ -113,11 +115,22 @@ if __name__ == "__main__":
     data_dir = Path(Path(__file__).__str__().split('/')[0]) / "data"
     machamp_dir = Path(__file__).parents[1] / "machamp/data/bigbio"
 
-    #data_paths = list((data_dir / "seqcls").glob("*"))
-    #data_paths += list((data_dir / "tokcls").glob("*"))
+    data_paths = list((data_dir / "seqcls").glob("*"))
+    data_paths += list((data_dir / "tokcls").glob("*"))
 
-    #blurb, blurb_ner, blurb_text_pairs = collect_blurb_data(data_paths)
+    blurb, blurb_ner, blurb_text_pairs = collect_blurb_data(data_paths)
 
     # Get MACHAMP training data
     tasks = list(machamp_dir.glob("*/"))
+
+    # For each task, compute the set of terms
+    machamp_train = {}
+    machamp_val = {}
+
+    for tk in tasks:
+        tk_name = tk.__str__().split("/")[-1]
+        print("Computing task = ", tk_name)
+        machamp_train.update({tk_name: collect_machamp_data(tk, "train")})
+        machamp_val.update({tk_name: collect_machamp_data(tk, "val")})
+
 
