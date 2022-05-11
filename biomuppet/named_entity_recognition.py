@@ -252,7 +252,7 @@ def bigbio_ner_to_conll(sample):
                 sentence = passage.replace('\t',' ').replace('\n',' ')
                 for token in tokenizer.tokenize(sentence):
                     conll_data.append((token, 'O'))
-            conll_data.append(('\n', '\n')) # Chunk data between sentence
+                conll_data.append(('', '')) # Chunk data between sentence
             p_idx += 1
             passage = sample['passages'][p_idx]['text'][0].replace('\t',' ').replace('\n',' ')
             p_offset = passage_offsets[p_idx]
@@ -370,14 +370,20 @@ if __name__ == '__main__':
         with (out / dataset.meta.name).with_suffix(".train").open("w") as f:
             for example in dataset.data["train"]:
                 for word, label in example['conll']:
-                    f.write(word + "\t" + label + "\n")
+                    if word or label:
+                        f.write(word + "\t" + label + "\n")
+                    else:
+                        f.write("\n")
                 f.write( "\n")
 
         ### Write validation file
         with (out / dataset.meta.name).with_suffix(".valid").open("w") as f:
             for example in dataset.data["validation"]:
                 for word, label in example['conll']:
-                    f.write(word + "\t" + label + "\n")
+                    if word or label:
+                        f.write(word + "\t" + label + "\n")
+                    else:
+                        f.write("\n")
                 f.write( "\n")
 
 
