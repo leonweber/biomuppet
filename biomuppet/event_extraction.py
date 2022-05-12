@@ -9,6 +9,10 @@ from tqdm import tqdm
 import itertools
 
 from biomuppet.classification import get_classification_meta
+from biomuppet.named_entity_recognition import (
+    get_sequence_labelling_meta,
+    bigbio_ner_to_conll,
+)
 from biomuppet.relation_extraction import is_valid_re
 from biomuppet.utils import (
     overlaps,
@@ -203,10 +207,6 @@ def event_extraction_to_relation_classification(example, mask_entities=True):
             if not head["event"]:
                 continue
 
-            if head == tail:
-                print("this should not happen")
-                continue
-
             text = insert_pair_markers(
                 passage["text"][0],
                 head=head,
@@ -230,7 +230,9 @@ def get_all_ee_as_re_datasets() -> List[SingleDataset]:
 
     dataset_loaders = get_all_dataloaders_for_task(Tasks.EVENT_EXTRACTION)
 
-    for dataset_loader in tqdm(dataset_loaders, desc="Preparing EE-RE datasets"):
+    for dataset_loader in tqdm(
+        dataset_loaders, desc="Preparing EventExtraction::EdgeClassification datasets"
+    ):
         dataset_name = Path(dataset_loader).with_suffix("").name
 
         if dataset_name in FAILING_QA:
@@ -261,15 +263,71 @@ def get_all_ee_as_re_datasets() -> List[SingleDataset]:
     return re_datasets
 
 
-if __name__ == "__main__":
+def event_triggers_to_entities(example):
 
-    from datasets import DatasetDict
+    example["entities"] = []
+
+    for event in example["events"]:
+        entity = {
+            "id": event["id"],
+            "offsets": event["trigger"]["offsets"],
+            "text": event["trigger"]["text"],
+            "type": event["type"],
+            "normalized": [],
+        }
+        example["entities"].append(entity)
+
+    return example
+
+
+def get_all_ee_as_ner_datasets() -> List[SingleDataset]:
+
+    re_datasets = []
+
+    dataset_loaders = get_all_dataloaders_for_task(Tasks.EVENT_EXTRACTION)
+
+    for dataset_loader in tqdm(
+        dataset_loaders, desc="Preparing EventExtraction::TriggerRecognition datasets"
+    ):
+        dataset_name = Path(dataset_loader).with_suffix("").name
+
+        if dataset_name in FAILING_QA:
+            continue
+
+        try:
+            dataset = datasets.load_dataset(
+                str(dataset_loader), name=f"{dataset_name}_bigbio_kb"
+            )
+        except ValueError as ve:
+            print(f"Skipping {dataset_loader} because of {ve}")
+            continue
+
+        dataset = dataset.map(split_sentences)
+        dataset = dataset.map(event_triggers_to_entities)
+        dataset = dataset.map(
+            bigbio_ner_to_conll,
+            remove_columns=[
+                "passages",
+                "entities",
+                "events",
+                "coreferences",
+                "relations",
+            ],
+        )
+
+        meta = get_sequence_labelling_meta(dataset=dataset, name=dataset_name + "_NER")
+        re_datasets.append(SingleDataset(data=dataset, meta=meta))
+
+    return re_datasets
+
+
+def write_as_relation_extraction_datasets():
 
     ee_as_re_datasets = get_all_ee_as_re_datasets()
 
     config = {}
 
-    out = Path("machamp/data/bigbio/event_extraction")
+    out = Path("machamp/data/bigbio/event_extraction_edge_classification")
     out.mkdir(exist_ok=True, parents=True)
 
     for dataset in tqdm(ee_as_re_datasets):
@@ -280,7 +338,6 @@ if __name__ == "__main__":
             "tasks": {dataset.name: {"column_idx": 1, "task_type": "classification"}},
         }
 
-        ### Generate validation split if not available
         if "validation" not in dataset.data:
             train_valid = dataset.data["train"].train_test_split(test_size=0.1)
             dataset.data = DatasetDict(
@@ -290,7 +347,6 @@ if __name__ == "__main__":
                 }
             )
 
-        ### Write train file
         with (out / dataset.name).with_suffix(".train").open("w", encoding="utf8") as f:
             for example in dataset.data["train"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
@@ -302,7 +358,6 @@ if __name__ == "__main__":
 
                 f.write(text + "\t" + label + "\n")
 
-        ### Write validation file
         with (out / dataset.name).with_suffix(".valid").open("w", encoding="utf8") as f:
             for example in dataset.data["validation"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ")
@@ -313,3 +368,115 @@ if __name__ == "__main__":
                     label = "None"
 
                 f.write(text + "\t" + label + "\n")
+
+
+def write_as_ner_datasets():
+
+    ee_as_ner_datasets = get_all_ee_as_ner_datasets()
+
+    config = {}
+
+    out = Path("machamp/data/bigbio/event_extraction_trigger_recognition")
+    out.mkdir(exist_ok=True, parents=True)
+
+    for dataset in tqdm(ee_as_ner_datasets):
+
+        config[dataset.meta.name] = {
+            "train_data_path": str((out / dataset.meta.name).with_suffix(".train")),
+            "validation_data_path": str(
+                (out / dataset.meta.name).with_suffix(".valid")
+            ),
+            "word_idx": 0,
+            "tasks": {dataset.meta.name: {"column_idx": 1, "task_type": "seq"}},
+        }
+
+        if "validation" not in dataset.data:
+            train_valid = dataset.data["train"].train_test_split(test_size=0.1, seed=0)
+            dataset.data = DatasetDict(
+                {
+                    "train": train_valid["train"],
+                    "validation": train_valid["test"],
+                }
+            )
+
+        with (out / dataset.meta.name).with_suffix(".train").open("w") as f:
+            for example in dataset.data["train"]:
+                for word, label in example["conll"]:
+                    if word or label:
+                        f.write(word + "\t" + label + "\n")
+                    else:
+                        f.write("\n")
+                f.write("\n")
+
+        with (out / dataset.meta.name).with_suffix(".valid").open("w") as f:
+            for example in dataset.data["validation"]:
+                for word, label in example["conll"]:
+                    if word or label:
+                        f.write(word + "\t" + label + "\n")
+                    else:
+                        f.write("\n")
+                f.write("\n")
+
+
+def test_trigger_detection():
+
+    import pandas as pd
+
+    dataset_loaders = get_all_dataloaders_for_task(Tasks.EVENT_EXTRACTION)
+
+    for dataset_loader in tqdm(
+        dataset_loaders, desc="Preparing EventExtraction::EdgeClassification datasets"
+    ):
+        dataset_name = Path(dataset_loader).with_suffix("").name
+
+        if dataset_name in FAILING_QA:
+            continue
+
+        try:
+            dataset = datasets.load_dataset(
+                str(dataset_loader), name=f"{dataset_name}_bigbio_kb"
+            )
+        except ValueError as ve:
+            print(f"Skipping {dataset_loader} because of {ve}")
+            continue
+
+        for split in ["train", "valid"]:
+
+            lines = open(
+                f"machamp/data/bigbio/event_extraction_trigger_recognition/{dataset_name}_NER.{split}"
+            ).readlines()
+
+            machamp = pd.DataFrame(
+                [
+                    dict(zip(["token", "label"], line.strip().split("\t")))
+                    for line in lines
+                    if line != "\n"
+                ]
+            )
+
+            bigbio = dataset[split]
+
+            triggers = [
+                e["trigger"]["text"][0].split()
+                for example in bigbio
+                for e in example["events"]
+            ]
+            triggers = [w for words in triggers for w in words]
+            tokens = [
+                token
+                for token, label in zip(list(machamp["token"]), list(machamp["label"]))
+                if label != "O"
+            ]
+
+            raise NotImplementedError("Not really sure what a good test might be here")
+
+
+if __name__ == "__main__":
+
+    from datasets import DatasetDict
+
+    write_as_relation_extraction_datasets()
+
+    write_as_ner_datasets()
+
+    # test_trigger_detection()
