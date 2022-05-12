@@ -27,7 +27,6 @@ from biomuppet.utils import DatasetMetaInformation, SingleDataset, get_all_datal
 # Define tokenizer globally
 tokenizer = SpaceTokenizer()
 
-DEBUG = False
 
 # Skip non-english, local dataset, and problematic dataset
 ignored_datasets = [
