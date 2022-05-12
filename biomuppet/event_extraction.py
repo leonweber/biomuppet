@@ -17,7 +17,7 @@ from biomuppet.utils import (
     split_sentences,
 )
 
-FAILING_QA = ["pcr", "bionlp_st_2013_ge", "bionlp_st_2013_gro"]
+FAILING_QA = ["pcr"]
 
 
 def insert_consistently(offset, insertion, text, starts, ends):
