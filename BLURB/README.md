@@ -7,6 +7,12 @@ Updated to reflect changes:
     - "cleans" strings for excessive white space using `named_entity_recognition` helper functions
     - Returns MACHAMP data tokens per dataset
 
+When parsing, the following datasets did not work with pandas (likely due to tab-spacing)
+
+Issue parsing with /home/natasha/Projects/biomuppet/machamp/data/bigbio/named_entity_recognition/chebi_nactem_fullpaper_ner.train
+Issue parsing with /home/natasha/Projects/biomuppet/machamp/data/bigbio/named_entity_recognition/muchmore_en_ner.train
+Issue parsing with /home/natasha/Projects/biomuppet/machamp/data/bigbio/named_entity_recognition/ebm_pico_ner.train
+
 ### 2022.05.11
 
 Output of overlap (WITHOUT NER)
