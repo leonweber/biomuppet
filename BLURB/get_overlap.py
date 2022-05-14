@@ -60,7 +60,7 @@ def get_blurb_sentences(data: DatasetDict, name: str) -> Dict[str, Set[str]]:
     
     elif name in ner_examples:
         output = {key: [" ".join(i) for i in data[key]["tokens"]] for key in data.keys()}
-        output = {key: set([j for k in output[key] for j in k]) for key in output.keys()}
+        output = {key: set([clean_string(s) for s in output[key]]) for key in data.keys()}
         
     else:
         output = {key: set(data[key]["sentence"]) for key in data.keys()}
@@ -112,15 +112,33 @@ def get_machamp_datasetname(fname: Path, ext: str):
 
 # TODO: maybe avoid pandas with just simple string parsing
 
+def parse_machamp_ner(filename: Path) -> Set[str]:
+    """Parse token-based tasks"""
+    sents = set()
+    line = []
+    
+    with open(filename, "r") as f:
+        x = f.readlines()
+
+    for l in x:
+        if l == "\n":
+            sents.add(" ".join(line))
+            line = []
+        else:
+            line.append(l.split("\t")[0])
+            
+    return sents
+
 def collect_machamp_data(split: str) -> Dict[str, Set[str]]:
     """Given a machamp task, construct a set of all sentences from all datasets in it
     """
     machamp_data = {}
 
-    non_qa_tasks = [t for t in tasks if "qa" not in t.__str__()]
+    non_ner_qa_tasks = [t for t in tasks if "qa" not in t.__str__() or "named_entity" not in t.__str__()]
+    ner_tasks = [t for t in tasks if "named_entity" in t.__str__()]
     qa_tasks = [t for t in tasks if "qa" in t.__str__()]
 
-    for tk in non_qa_tasks:
+    for tk in non_ner_qa_tasks:
         tk_name = tk.__str__().split("/")[-1]
         ext = task_mapping[tk_name]
         datapaths = tk.glob("*." + split)
@@ -134,7 +152,29 @@ def collect_machamp_data(split: str) -> Dict[str, Set[str]]:
 
             try:
                 x = pd.read_csv(fname, sep="\t", header=None) # Two columns, space separated
-                machamp_data[dset_name] = machamp_data[dset_name] .union(set(x.iloc[:, 0].tolist()))
+                machamp_data[dset_name] = machamp_data[dset_name].union(set(x.iloc[:, 0].tolist()))
+                
+            except pd.errors.EmptyDataError:
+                print("Empty dataset with dataset", fname)
+            except pd.errors.ParserError:
+                print("Issue parsing with", fname)
+
+    # Named entity recognition needs to be grouped by new-lines
+    for tk in ner_tasks:
+        tk_name = tk.__str__().split("/")[-1]
+        ext = task_mapping[tk_name]
+        datapaths = tk.glob("*." + split)
+
+        for fname in datapaths:
+
+            dset_name = get_machamp_datasetname(fname, ext)
+
+            if dset_name not in machamp_data.keys():
+                machamp_data.update({dset_name: set()})
+
+            try:
+                x = parse_machamp_ner(fname)
+                machamp_data[dset_name] = machamp_data[dset_name].union(x)
                 
             except pd.errors.EmptyDataError:
                 print("Empty dataset with dataset", fname)
@@ -156,7 +196,7 @@ def collect_machamp_data(split: str) -> Dict[str, Set[str]]:
 
             try:
                 x = pd.read_csv(fname, sep="\t", header=None) # Two columns, space separated
-                machamp_data[dset_name] = machamp_data[dset_name] .union(set(x.iloc[:, 0].tolist()))
+                machamp_data[dset_name] = machamp_data[dset_name].union(set(x.iloc[:, 0].tolist()))
                 
             except pd.errors.EmptyDataError:
                 print("Empty dataset with dataset", fname)
@@ -184,8 +224,6 @@ if __name__ == "__main__":
     tasks = [i for i in tasks if ".git" not in i.__str__()]
 
     # For each task, compute the set of terms
-    machamp_train = {}
-    machamp_val = {}
 
     machamp_train = collect_machamp_data("train")
     machamp_val = collect_machamp_data("valid")
