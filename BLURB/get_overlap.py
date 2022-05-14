@@ -106,9 +106,13 @@ def collect_blurb_data(data_paths: List[Path]) -> Dict[str, Set[str]]:
 # Machamp pre-processed data fxns
 # ------------------------- #
 
+def get_machamp_datasetname(fname: Path, ext: str):
+    """Get dataset name to split on"""
+    return fname.__str__().split("/")[-1].split(".")[0].split(ext)[0]
+
 # TODO: maybe avoid pandas with just simple string parsing
 
-def collect_machamp_data():
+def collect_machamp_data(split: str) -> Dict[str, Set[str]]:
     """Given a machamp task, construct a set of all sentences from all datasets in it
     """
     machamp_data = {}
@@ -182,7 +186,6 @@ if __name__ == "__main__":
     # For each task, compute the set of terms
     machamp_train = {}
     machamp_val = {}
-
 
     machamp_train = collect_machamp_data("train")
     machamp_val = collect_machamp_data("valid")
