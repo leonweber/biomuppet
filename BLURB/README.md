@@ -1,6 +1,13 @@
 # Quantifying overlap of train/test BLURB datasets
 
-# 2022.05.11
+### 2022.05.14
+
+Updated to reflect changes:
+    - joins tokens in NER task
+    - "cleans" strings for excessive white space using `named_entity_recognition` helper functions
+    - Returns MACHAMP data tokens per dataset
+
+### 2022.05.11
 
 Output of overlap (WITHOUT NER)
 BLURB Train v. MACHAMP Train
