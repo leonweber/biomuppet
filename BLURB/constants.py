@@ -1,3 +1,15 @@
+# Task mapping
+
+task_mapping = {
+    "classification": "_text",
+    "coref": "_coref",
+    "event_extraction": "_RE",
+    "named_entity_recognition": "_ner",
+    "qa": ["_CLF", "_SEQ"],
+    "re": "_RE",
+    "sts": "_sts"
+}
+
 # Text pairs
 
 text_pairs = [
