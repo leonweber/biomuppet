@@ -129,12 +129,12 @@ def parse_machamp_ner(filename: Path) -> Set[str]:
             
     return sents
 
-def collect_machamp_data(split: str) -> Dict[str, Set[str]]:
+def collect_machamp_data(tasks: List[Path], split: str) -> Dict[str, Set[str]]:
     """Given a machamp task, construct a set of all sentences from all datasets in it
     """
     machamp_data = {}
 
-    non_ner_qa_tasks = [t for t in tasks if "qa" not in t.__str__() or "named_entity" not in t.__str__()]
+    non_ner_qa_tasks = [t for t in tasks if "qa" not in t.__str__() and "named_entity" not in t.__str__()]
     ner_tasks = [t for t in tasks if "named_entity" in t.__str__()]
     qa_tasks = [t for t in tasks if "qa" in t.__str__()]
 
@@ -225,10 +225,10 @@ if __name__ == "__main__":
 
     # For each task, compute the set of terms
 
-    machamp_train = collect_machamp_data("train")
-    machamp_val = collect_machamp_data("valid")
+    machamp_train = collect_machamp_data(tasks, "train")
+    machamp_val = collect_machamp_data(tasks, "valid")
 
-    print("Saving")
+    print("Saving Linkbert Data")
     with gzip.open("linkbert_blurb.gz.pkl", "wb") as f:
         pkl.dump(blurb, f)
 
@@ -238,9 +238,11 @@ if __name__ == "__main__":
     with gzip.open("linkbert_blurb_text_pairs.gz.pkl", "wb") as f:
         pkl.dump(blurb_text_pairs, f)
 
+    print("Saving machamp train")
     with gzip.open("machamp_train.gz.pkl", "wb") as f:
         pkl.dump(machamp_train, f)
 
+    print("Saving machamp validation")
     with gzip.open("machamp_val.gz.pkl", "wb") as f:
         pkl.dump(machamp_val, f)
 
