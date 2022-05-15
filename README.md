@@ -35,16 +35,17 @@ cd [MACHAMP_ROOT_PATH]; python train.py --dataset_config configs/bigbio_debug.js
 ```
 8b. Run Machamp training (multiple nodes)
 
-Set correct distributed settings in `[MACHAMP_ROOT_PATH]/configs/params.json
+Set correct distributed settings in `[MACHAMP_ROOT_PATH]/configs/params.json`:
 ```
     "distributed": {
         "cuda_devices": [0, 1, 2, 3], # note that all nodes have to have the same number of GPUs for AllenNLP multi node training to work
         "master_address": "[ADDRESS of main node]",
         "master_port": "29500", # some free port
         "num_nodes": [Total number of nodes]
+        }
 ```
 
-Start training
+Start training:
 ```
 cd [MACHAMP_ROOT_PATH]; python train.py --dataset_config configs/bigbio_debug.json --node_rank [rank of local node]
 ```
