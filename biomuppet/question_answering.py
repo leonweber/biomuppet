@@ -106,12 +106,12 @@ def get_all_qa_datasets() -> List[SingleDataset]:
     Transforms ALL QA dataset with yesno and multiple choice --> MaChamp classification
     Transforms some QA datasest with multiple choice that has exact match between answer and the prompt --> MaChamp
     Sequence
-    Currenctly pulls biomrc, medhop, pubmed_qa, sciq. biomrc, pubmed_qa has subset_ids
+    Currenctly pulls biomrc, pubmed_qa, sciq. biomrc, pubmed_qa has subset_ids
     :return: qa_datasets
     """
     qa_clf_datasets = []
     qa_seq_datasets = []
-    ignored_qa_datasets = ["mediqa_qa","biology_how_why_corpus", "med_qa", "bioasq_task_b"]
+    ignored_qa_datasets = ["mediqa_qa","biology_how_why_corpus", "med_qa", "bioasq_task_b", "medhop"]
     ds_subset_id = {'biomrc':['biomrc_large_B'],
                     'pubmed_qa':['pubmed_qa_labeled_fold0']}
 
@@ -119,7 +119,11 @@ def get_all_qa_datasets() -> List[SingleDataset]:
             get_all_dataloaders_for_task(Tasks.QUESTION_ANSWERING),
             desc="Preparing QA datasets",
     ):
+
         dataset_name = Path(dataset_loader).with_suffix("").name
+
+        if DEBUG and "sciq" not in dataset_name:
+            continue
 
         if dataset_name in ignored_qa_datasets:
             continue
@@ -166,9 +170,6 @@ def get_all_qa_datasets() -> List[SingleDataset]:
                 #     new_dataset[split_name] = subsample_negative(split)
                 meta = get_classification_meta(dataset=new_dataset, name=bigbio_config_name[:-10]+"_SEQ")
                 qa_seq_datasets.append(SingleDataset(new_dataset, meta=meta))
-
-        if DEBUG:
-            break
 
     return qa_clf_datasets, qa_seq_datasets
 
