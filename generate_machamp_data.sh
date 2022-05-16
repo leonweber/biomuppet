@@ -2,14 +2,14 @@
 
 if [ $# -eq 0 ]
 then
-  Usage: bash generate_machamp_data.sh [MACHAMP_ROOT_DIR]
+  echo "Usage: bash generate_machamp_data.sh [MACHAMP_ROOT_DIR]"
   exit
 fi
 
-#machamp_dir="$1"
-#rm -rf "$machamp_dir"/params
-#ln -s "$(pwd)/machamp/data" "$machamp_dir"
-#ln -s "$(pwd)/machamp/configs" "$machamp_dir"
+machamp_dir="$1"
+rm -rf "$machamp_dir"/configs
+ln -s "$(pwd)/machamp/data" "$machamp_dir"
+ln -s "$(pwd)/machamp/configs" "$machamp_dir"
 
 python -m biomuppet.classification
 python -m biomuppet.coreference_resolution
