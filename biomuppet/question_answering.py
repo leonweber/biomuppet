@@ -138,9 +138,9 @@ def get_all_qa_datasets() -> List[SingleDataset]:
             except ValueError as ve:
                 print(f"Skipping {dataset_loader} because of {ve}")
                 continue
-
+            dataset_filtered = dataset.filter(lambda x: len(x["context"])>1)
             # convert all QA dataset to MaChamp classification and add as SingleDataset
-            new_dataset = dataset.map(
+            new_dataset = dataset_filtered.map(
                 qa_to_classification,
                 batched=True,
                 batch_size=1,
@@ -153,7 +153,7 @@ def get_all_qa_datasets() -> List[SingleDataset]:
 
             # If the dataset is MCQA, create MaChamp sequence format
             # convert all QA dataset to MaChamp classification and add as SingleDataset
-            mcqa_dataset = dataset.filter(lambda x: x["type"]=="multiple_choice")
+            mcqa_dataset = dataset_filtered.filter(lambda x: x["type"]=="multiple_choice")
             if mcqa_dataset.num_rows['train'] >0:
                 new_dataset = mcqa_dataset.map(
                     qa_to_sequence,
@@ -206,7 +206,7 @@ if __name__ == '__main__':
         with (out / name).with_suffix(".train").open("w") as f:
             for example in dataset.data["train"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
-                    else example["sequence"].strip().replace("\t", " ").replace("\n", " ")
+                    else example["sequence"][0]
                 text = text.replace("[SEP]", "\t")
                 if not text:
                     continue
@@ -220,7 +220,7 @@ if __name__ == '__main__':
         with (out / name).with_suffix(".valid").open("w") as f:
             for example in dataset.data["validation"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
-                    else example["sequence"].strip().replace("\t", " ").replace("\n", " ")
+                    else example["sequence"][0]
                 text = text.replace("[SEP]", "\t")
                 if not text:
                     continue
@@ -256,7 +256,7 @@ if __name__ == '__main__':
         with (out / name).with_suffix(".train").open("w") as f:
             for example in dataset.data["train"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
-                    else example["sequence"][0].strip().replace("\t", " ").replace("\n", " ")
+                    else example["sequence"][0]
                 if not text:
                     continue
                 label = "|".join(sorted(example["labels"]))
@@ -270,7 +270,7 @@ if __name__ == '__main__':
         with (out / name).with_suffix(".valid").open("w") as f:
             for example in dataset.data["validation"]:
                 text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
-                    else example["sequence"][0].strip().replace("\t", " ").replace("\n", " ")
+                    else example["sequence"][0]
                 if not text:
                     continue
                 label = "|".join(sorted(example["labels"]))
