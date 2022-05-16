@@ -18,7 +18,7 @@ conda install pytorch==1.8.0 torchvision==0.9.0 torchaudio==0.8.0 cudatoolkit=11
 ``` 
 5. Clone our fork of [Machamp](https://github.com/machamp-nlp/machamp):
 ```
-git clone git@github.com:leonweber/machamp.git
+git clone https://github.com/leonweber/machamp.git
 ```
 6. Clone the biomuppet repository and install dependencies
 ```
