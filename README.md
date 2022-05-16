@@ -23,7 +23,7 @@ git clone https://github.com/leonweber/machamp.git
 5. Clone the biomuppet repository and install dependencies
 ```
 git clone git@github.com:leonweber/biomuppet.git
-pip install -r biomuppet/requirements.txt
+pip install --no-deps -r biomuppet/requirements.txt
 ```
 6. Generate the machamp training data
 ```
