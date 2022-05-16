@@ -87,7 +87,7 @@ def get_all_dataloaders_for_task(task: Tasks) -> List[BigBioConfigHelper]:
         )
     )
 
-    return [i.get_load_dataset_kwargs()["path"] for i in bb_task_public_helpers]
+    return sorted(set(i.get_load_dataset_kwargs()["path"] for i in bb_task_public_helpers))
 
 
 def clean_text(text):
