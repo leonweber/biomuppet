@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 from pathlib import Path
 from typing import List, Dict
@@ -369,6 +370,10 @@ def write_as_relation_extraction_datasets():
 
                 f.write(text + "\t" + label + "\n")
 
+    ## Write Machamp config
+    with open(out / "config.json", "w") as f:
+        json.dump(config, f, indent=1)
+
 
 def write_as_ner_datasets():
 
@@ -417,6 +422,9 @@ def write_as_ner_datasets():
                         f.write("\n")
                 f.write("\n")
 
+    ## Write Machamp config
+    with open(out / "config.json", "w") as f:
+        json.dump(config, f, indent=1)
 
 def test_trigger_detection():
 
