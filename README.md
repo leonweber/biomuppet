@@ -1,4 +1,6 @@
 ### Setup
+This project requires `python 3.8` (**!**)
+
 1. Install `bigbio`
 ```
 git clone git@github.com:bigscience-workshop/biomedical.git
