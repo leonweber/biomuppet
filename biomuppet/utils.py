@@ -6,6 +6,7 @@ from typing import List
 import bigbio
 import datasets
 from bigbio.utils.constants import Tasks
+from bigbio.dataloader import BigBioConfigHelpers, BigBioConfigHelper
 from flair.tokenization import SegtokSentenceSplitter
 
 DEBUG = True
@@ -76,18 +77,17 @@ def split_sentences(example):
     return example
 
 
-def get_all_dataloaders_for_task(task: Tasks) -> List[datasets.Dataset]:
-    dataset_loaders_for_task = []
-    biodatasets_path = Path(bigbio.__file__).resolve().parents[1] / "biodatasets"
-    all_dataset_loaders = list(biodatasets_path.glob("*/*py"))
-    for dataset_loader in all_dataset_loaders:
-        spec = importlib.util.spec_from_file_location("foo", dataset_loader)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        if task in module._SUPPORTED_TASKS:
-            dataset_loaders_for_task.append(str(dataset_loader))
+def get_all_dataloaders_for_task(task: Tasks) -> List[BigBioConfigHelper]:
+    conhelps = BigBioConfigHelpers()
+    bb_task_public_helpers = conhelps.filtered(
+        lambda x: (
+            x.is_bigbio_schema
+            and task in x.tasks
+            and not x.is_local
+        )
+    )
 
-    return dataset_loaders_for_task
+    return [i.get_load_dataset_kwargs()["path"] for i in bb_task_public_helpers]
 
 
 def clean_text(text):
