@@ -1,7 +1,6 @@
-pytorch_lightning>=1.6.2
-transformers>=4.18.0
 tqdm
-torchmetrics
-wandb
 flair
 nltk
+transformers==4.18
+huggingface_hub==0.5.1
+tokenizers==0.12.1
