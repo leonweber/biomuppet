@@ -241,7 +241,7 @@ if __name__ == '__main__':
             "tasks": {
                 name: {
                     "column_idx": 1,
-                    "task_type": "sequence"
+                    "task_type": "seq"
                 }
             }
         }
