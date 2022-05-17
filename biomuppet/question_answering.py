@@ -112,7 +112,7 @@ def get_all_qa_datasets() -> List[SingleDataset]:
     qa_clf_datasets = []
     qa_seq_datasets = []
     ignored_qa_datasets = ["mediqa_qa","biology_how_why_corpus", "med_qa", "bioasq_task_b", "medhop"]
-    ds_subset_id = {'biomrc':['biomrc_large_B'],
+    ds_subset_id = {'biomrc':['biomrc_small_B'],
                     'pubmed_qa':['pubmed_qa_labeled_fold0']}
 
     for dataset_loader in tqdm(
@@ -237,7 +237,7 @@ if __name__ == '__main__':
         config[name] = {
             "train_data_path": str((out / name).with_suffix(".train")),
             "validation_data_path": str((out / name).with_suffix(".valid")),
-            "word_idxs": 0,
+            "word_idx": 0,
             "tasks": {
                 name: {
                     "column_idx": 1,
