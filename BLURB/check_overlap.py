@@ -51,7 +51,7 @@ def compare_splits(
     machamp_toks = tokenize_inputs(split_machamp)
     
     overlaps = []
-    for idx, machamp_ex in enumerate(tqdm(machamp_toks, desc="MACHAMP ex:")):
+    for idx, machamp_ex in enumerate(tqdm(machamp_toks, desc="MACHAMP ex")):
         for blurb_ex in blurb_toks:
             overlap_pct = len(machamp_ex.intersection(blurb_ex)) / len(blurb_ex)
             if overlap_pct >= thresh:
@@ -63,6 +63,7 @@ def compare_splits(
 
 if __name__ == "__main__":
 
+    print("Loading Data")
     with gzip.open("linkbert_blurb.gz.pkl", "rb") as f:
         blurb = pkl.load(f)
 
@@ -79,9 +80,11 @@ if __name__ == "__main__":
         machamp_val = pkl.load(f)
 
 
+    print("Beginning Overlap comparison")
     #  ------------------------------------------------ #
     for dsplit in ["train", "dev", "test"]:
         for dset in machamp_train:
+            print("Dataset = ", dset)
             overlap = compare_splits(blurb[dsplit], machamp_train[dset])
             overlap_ner = compare_splits(blurb_ner[dsplit], machamp_train[dset])
             overlap_pairs = compare_splits(blurb_text_pairs[dsplit], machamp_train[dset])
