@@ -1,5 +1,60 @@
 import gzip
 import pickle as pkl
+import re
+from typing import List, Set
+from time import time
+
+# Should I omit stop words?
+#from nltk.corpus import stopwords
+#stop_words = stopwords.words('english')
+
+def clean_string(s: str) -> str:
+    """Fix casing/extra white spacing/regex issues"""
+    s = re.sub(' +', ' ', s)
+    s = re.sub(r'\s([?.,!"](?:\s|$))', r'\1', s)
+    s = s.lower()
+    return s
+
+def create_clean_tokens(s: str) -> Set[str]:
+    """Given a str input, tokenize + clean string"""
+    tokens = s.split(" ")
+    tokens = [clean_string(tok) for tok in tokens]
+    return set(tokens)
+
+
+def tokenize_inputs(inp_set: List[str]) -> List[Set[str]]:
+    """ Intake a set of strings and compute them into sets of tokens
+    """
+    tmp = [create_clean_tokens(i) for i in inp_set]
+    return tmp
+
+def compare_splits(
+    split_blurb: Set[str],
+    split_machamp: Set[str],
+    thresh=0.8,
+    ):
+    """For each example, return the number of examples that have
+    over 80% overlap with an example in the BLURB dataset, using the length of the unique tokens in the BLURB example.
+
+    :param split_blurb: Set of blurb Examples
+    :param split_machamp: Set of Machamp examples
+    :param thresh: % of tokens that overlap between blurb/machamp
+    """
+    split_blurb = list(split_blurb)
+    split_machamp = list(split_machamp)
+
+    blurb_toks = tokenize_inputs(split_blurb)
+    machamp_toks = tokenize_inputs(split_machamp)
+    
+    overlaps = []
+    for idx, machamp_ex in enumerate(machamp_toks):
+        for blurb_ex in blurb_toks:
+            overlap_pct = len(machamp_ex.intersection(blurb_ex)) / len(blurb_ex)
+            if overlap_pct >= thresh:
+                overlaps.append(split_machamp[idx])
+    
+    return overlaps
+
 
 
 if __name__ == "__main__":
@@ -22,125 +77,29 @@ if __name__ == "__main__":
 
  #  ------------------------------------------------ #
     for dset in machamp_train:
+        t0 = time()
+        overlap = compare_splits(blurb["train"], machamp_train[dset])
+        print("BLURB Comparison = ", time.time() - t0)
+
+        overlap_ner = compare_splits(blurb_ner["train"], machamp_train[dset])
+        overlap_pairs = compare_splits(blurb_text_pairs["train"], machamp_train[dset])
 
         print(
             "BLURB Train v. Machamp Train; " + dset  + "\n",
-            len(blurb["train"].intersection(machamp_train[dset])),
-            "/", len(blurb["train"]), "\n",
-        )
-        print(
-            "BLURB NER sentences v. Machamp Train; " + dset  + "\n",
-            len(blurb_ner["train"].intersection(machamp_train[dset])),
-            "/", len(blurb_ner["train"]), " (NER) \n",
-        )
-        print(
-            "BLURB Text Pairs v. Machamp Train; " + dset  + "\n",
-            len(blurb_text_pairs["train"].intersection(machamp_train[dset])),
-            "/", len(blurb_text_pairs["train"]), " (text pairs) \n",
-        )
-        print("-------")
-
-    print("\n\n=====================")
-
-    for dset in machamp_train:
-
-        print(
-            "BLURB test v. Machamp Train; " + dset  + "\n",
-            len(blurb["test"].intersection(machamp_train[dset])),
-            "/", len(blurb["test"]), " \n",
-        )
-        print(
-            "BLURB NER sentences test v. Machamp Train; " + dset  + "\n",
-            len(blurb_ner["test"].intersection(machamp_train[dset])),
-            "/", len(blurb_ner["test"]), " (NER) \n",
-        )
-        print(
-            "BLURB Text Pairs test v. Machamp Train; " + dset  + "\n",
-            len(blurb_text_pairs["test"].intersection(machamp_train[dset])),
-            "/", len(blurb_text_pairs["test"]), "  (text pairs) \n",
-        )
-        print("-------")
-
-    print("\n\n=====================")
-
-    for dset in machamp_train:
-
-        print(
-            "BLURB dev v. Machamp Train; " + dset  + "\n",
-            len(blurb["dev"].intersection(machamp_train[dset])),
-            "/", len(blurb["dev"]), " \n",
-        )
-        print(
-            "BLURB NER sentences dev v. Machamp Train; " + dset  + "\n",
-            len(blurb_ner["dev"].intersection(machamp_train[dset])),
-            "/", len(blurb_ner["dev"]), " (NER) \n",
-        )
-        print(
-            "BLURB Text Pairs dev v. Machamp Train; " + dset  + "\n",
-            len(blurb_text_pairs["dev"].intersection(machamp_train[dset])),
-            "/", len(blurb_text_pairs["dev"]), "  (text pairs) \n",
-        )
-        print("-------")
- #  ------------------------------------------------ #
-
-
-    for dset in machamp_val:
-
-        print(
-            "BLURB Train v. Machamp Val; " + dset  + "\n",
-            len(blurb["train"].intersection(machamp_val[dset])),
+            len(overlap),
             "/", len(blurb["train"]), " \n",
         )
+
         print(
-            "BLURB NER sentences v. Machamp Val; " + dset  + "\n",
-            len(blurb_ner["train"].intersection(machamp_val[dset])),
+            "BLURB NER Train v. Machamp Train; " + dset  + "\n",
+            len(overlap_ner),
             "/", len(blurb_ner["train"]), " (NER) \n",
         )
-        print(
-            "BLURB Text Pairs v. Machamp Val; " + dset  + "\n",
-            len(blurb_text_pairs["train"].intersection(machamp_val[dset])),
-            "/", len(blurb_text_pairs["train"]), " (text pairs)  \n",
-        )
-        print("-------")
-
-    print("\n\n=====================")
-
-    for dset in machamp_val:
 
         print(
-            "BLURB test v. Machamp Val; " + dset  + "\n",
-            len(blurb["test"].intersection(machamp_val[dset])),
-            "/", len(blurb["test"]), "\n",
+            "BLURB Text Pairs Train v. Machamp Train; " + dset  + "\n",
+            len(overlap_pairs),
+            "/", len(blurb_text_pairs["train"]), " (text pairs) \n",
         )
-        print(
-            "BLURB NER sentences test v. Machamp Val; " + dset  + "\n",
-            len(blurb_ner["test"].intersection(machamp_val[dset])),
-            "/", len(blurb_ner["test"]), " (NER) \n",
-        )
-        print(
-            "BLURB Text Pairs test v. Machamp Val; " + dset  + "\n",
-            len(blurb_text_pairs["test"].intersection(machamp_val[dset])),
-            "/", len(blurb_text_pairs["test"]), " (text pairs) \n",
-        )
-        print("-------")
 
-    print("\n\n=====================")
-    
-    for dset in machamp_val:
 
-        print(
-            "BLURB dev v. Machamp Val; " + dset  + "\n",
-            len(blurb["dev"].intersection(machamp_val[dset])),
-            "/", len(blurb["dev"]), " \n",
-        )
-        print(
-            "BLURB NER sentences dev v. Machamp Val; " + dset  + "\n",
-            len(blurb_ner["dev"].intersection(machamp_val[dset])),
-            "/", len(blurb_ner["dev"]), " (NER) \n",
-        )
-        print(
-            "BLURB Text Pairs dev v. Machamp Val; " + dset  + "\n",
-            len(blurb_text_pairs["dev"].intersection(machamp_val[dset])),
-            "/", len(blurb_text_pairs["dev"]), " (text pairs) \n",
-        )
-        print("-------")

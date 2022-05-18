@@ -1,5 +1,24 @@
 # Quantifying overlap of train/test BLURB datasets
 
+### 2022.05.17
+
+Considering low overlaps, we will modify the problem.
+
+Each BLURB and MACHAMP dataset has sets of sentences to compare. We will do the following:
+    - Every 'sentence' element is split into a set of unique tokens
+    - All tokens are string normalized (cleaned, white-space stripped).
+    - Punctuations + stop words omitted.
+
+We consider overlaps in the examples if some 80% of tokens between a BLURB bag-of-words and MACHAMP bag-of-words are the same
+
+### 2022.05.16
+
+Retrieval against a set of sentences; if the best match is above some threshold, we count it as a perfect match
+Who is doing this??
+
+To do - make each items a bag of words retrieval baseline.
+Save the intersection of the dataset
+
 ### 2022.05.14
 
 Updated to reflect changes:
@@ -7,13 +26,13 @@ Updated to reflect changes:
     - "cleans" strings for excessive white space using `named_entity_recognition` helper functions
     - Returns MACHAMP data tokens per dataset
 
-When parsing, the following datasets did not work with pandas (likely due to tab-spacing)
 
-Issue parsing with /home/natasha/Projects/biomuppet/machamp/data/bigbio/named_entity_recognition/chebi_nactem_fullpaper_ner.train
-Issue parsing with /home/natasha/Projects/biomuppet/machamp/data/bigbio/named_entity_recognition/muchmore_en_ner.train
-Issue parsing with /home/natasha/Projects/biomuppet/machamp/data/bigbio/named_entity_recognition/ebm_pico_ner.train
+Some notes on parsing the MACHAMP data:
+Empty dataset with dataset /home/natasha/Projects/biomuppet/machamp/data/bigbio/qa/biomrc_large_B_SEQ.train
+Empty dataset with dataset /home/natasha/Projects/biomuppet/machamp/data/bigbio/qa/biomrc_large_B_SEQ.valid
 
 ### 2022.05.11
+Disregard NER - this was done via token-specific overlap; we needed to join the tokens together
 
 Output of overlap (WITHOUT NER)
 BLURB Train v. MACHAMP Train
