@@ -3,6 +3,10 @@ import pickle as pkl
 import re
 from typing import List, Set
 from time import time
+from tqdm import tqdm
+
+import gzip as gz
+import pickle as pkl
 
 # Should I omit stop words?
 #from nltk.corpus import stopwords
@@ -47,7 +51,7 @@ def compare_splits(
     machamp_toks = tokenize_inputs(split_machamp)
     
     overlaps = []
-    for idx, machamp_ex in enumerate(machamp_toks):
+    for idx, machamp_ex in enumerate(tqdm(machamp_toks, desc="MACHAMP ex:")):
         for blurb_ex in blurb_toks:
             overlap_pct = len(machamp_ex.intersection(blurb_ex)) / len(blurb_ex)
             if overlap_pct >= thresh:
@@ -75,31 +79,72 @@ if __name__ == "__main__":
         machamp_val = pkl.load(f)
 
 
- #  ------------------------------------------------ #
-    for dset in machamp_train:
-        t0 = time()
-        overlap = compare_splits(blurb["train"], machamp_train[dset])
-        print("BLURB Comparison = ", time.time() - t0)
+    #  ------------------------------------------------ #
+    for dsplit in ["train", "dev", "test"]:
+        for dset in machamp_train:
+            overlap = compare_splits(blurb[dsplit], machamp_train[dset])
+            overlap_ner = compare_splits(blurb_ner[dsplit], machamp_train[dset])
+            overlap_pairs = compare_splits(blurb_text_pairs[dsplit], machamp_train[dset])
 
-        overlap_ner = compare_splits(blurb_ner["train"], machamp_train[dset])
-        overlap_pairs = compare_splits(blurb_text_pairs["train"], machamp_train[dset])
+            print(
+                "BLURB " + dsplit + " v. Machamp Train; " + dset  + "\n",
+                len(overlap),
+                "/", len(blurb[dsplit]), " \n",
+            )
 
-        print(
-            "BLURB Train v. Machamp Train; " + dset  + "\n",
-            len(overlap),
-            "/", len(blurb["train"]), " \n",
-        )
+            print(
+                "BLURB NER" + dsplit + " v. Machamp Train; " + dset  + "\n",
+                len(overlap_ner),
+                "/", len(blurb_ner[dsplit]), " (NER) \n",
+            )
 
-        print(
-            "BLURB NER Train v. Machamp Train; " + dset  + "\n",
-            len(overlap_ner),
-            "/", len(blurb_ner["train"]), " (NER) \n",
-        )
+            print(
+                "BLURB Text Pairs " + dsplit + " v. Machamp Train; " + dset  + "\n",
+                len(overlap_pairs),
+                "/", len(blurb_text_pairs[dsplit]), " (text pairs) \n",
+            )
 
-        print(
-            "BLURB Text Pairs Train v. Machamp Train; " + dset  + "\n",
-            len(overlap_pairs),
-            "/", len(blurb_text_pairs["train"]), " (text pairs) \n",
-        )
+            print("Saving data")
+            with gz.open(dset + "_train_blurb_" + dsplit  + ".pkl.gz", "wb") as f:
+                pkl.dump(overlap, f)
+
+            with gz.open(dset + "_train_blurb_" + dsplit  + "_ner.pkl.gz", "wb") as f:
+                pkl.dump(overlap_ner, f)
+
+            with gz.open(dset + "_train_blurb_" + dsplit  + "_textpairs.pkl.gz", "wb") as f:
+                pkl.dump(overlap_pairs, f)
 
 
+    for dsplit in ["train", "dev", "test"]:
+        for dset in machamp_val:
+            overlap = compare_splits(blurb[dsplit], machamp_val[dset])
+            overlap_ner = compare_splits(blurb_ner[dsplit], machamp_val[dset])
+            overlap_pairs = compare_splits(blurb_text_pairs[dsplit], machamp_val[dset])
+
+            print(
+                "BLURB " + dsplit + " v. Machamp Val; " + dset  + "\n",
+                len(overlap),
+                "/", len(blurb[dsplit]), " \n",
+            )
+
+            print(
+                "BLURB NER" + dsplit + " v. Machamp Val; " + dset  + "\n",
+                len(overlap_ner),
+                "/", len(blurb_ner[dsplit]), " (NER) \n",
+            )
+
+            print(
+                "BLURB Text Pairs " + dsplit + " v. Machamp Val; " + dset  + "\n",
+                len(overlap_pairs),
+                "/", len(blurb_text_pairs[dsplit]), " (text pairs) \n",
+            )
+
+            print("Saving data")
+            with gz.open(dset + "_val_blurb_" + dsplit  + ".pkl.gz", "wb") as f:
+                pkl.dump(overlap, f)
+
+            with gz.open(dset + "_val_blurb_" + dsplit  + "_ner.pkl.gz", "wb") as f:
+                pkl.dump(overlap_ner, f)
+
+            with gz.open(dset + "_val_blurb_" + dsplit  + "_textpairs.pkl.gz", "wb") as f:
+                pkl.dump(overlap_pairs, f)
