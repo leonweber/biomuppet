@@ -66,6 +66,7 @@ dataset_to_name_subset_map = {
     'muchmore': [('muchmore_en_bigbio_kb','muchmore_en')]
 }
 
+
 def get_sequence_labelling_meta(dataset, name):
     label_to_idx = {"None": 0}
     for dset_split in dataset.keys():
@@ -88,7 +89,7 @@ def get_sequence_labelling_meta(dataset, name):
     )
 
 def get_biodataset_metadata():
-    biodataset_path = biodatasets_path = Path(bigbio.__file__).resolve().parents[1] / "biodatasets"
+    biodataset_path = Path(bigbio.__file__).resolve().parents[1] / "bigbio" / "biodatasets"
     datasets_meta = []
 
     for path in glob.glob(f'{biodataset_path}/*/*.py'):
