@@ -67,17 +67,22 @@ def compute_overlap(
     # The cosine_similarity fxn will fail here due to memory issues
     # we can home cook a cos-sim, but i wonder if a matrix math is sufficient
 
-
     # Compute the max overlap between the 2
     t0 = time()
-    #overlap = cosine_similarity(btok_mat, mtok_mat)
+    #overlap = cosine_similarity(btok_mat, mtok_mat) 
     overlap = btok_mat * mtok_mat.T 
+    
     print(time() - t0, "Elapsed time")
 
     # TODO: LEON
     # I needed to write a loop as just a overlap.max(axis=0) will collapse due to size
     # Ideally here, you just need to ask if, for an entry in the machamp dataset
     # who the largest 
+
+    # Ideally you want to do:
+    #overlap.max(axis=1) > 0.8 (find any machamp entry with the largest BLURB overlap, if the blurb cos-sim is over let's say 0.8, then it has a high similarity to a sentence in BLURB
+    # Collapse over all blurb indices 
+    # The matrix overlap is N_examples_in_blurb x N_examples_in_machamp
     overlap_sents = []
     for idx in tqdm(range(mtok_mat.shape[0])):
         if overlap[:, idx].max() >= thresh:
