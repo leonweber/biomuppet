@@ -1,6 +1,8 @@
 BLURB/test_overlap.py
 BLURB/preprocessor.py
 BLURB/*.gz.pkl
+BLURB/bkup_data/*
+BLURB/saved_data/*
 
 machamp/configs/
 machamp/data/bigbio/
