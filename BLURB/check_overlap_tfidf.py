@@ -1,11 +1,19 @@
+from calendar import c
 import gzip
+import imp
 import pickle as pkl
 import re
 from typing import List, Set
+import argparse
 from time import time
 from tqdm import tqdm
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from scipy.sparse import csr_matrix
+import os
+import torch
+from torch import nn 
+import numpy as np
 
 import gzip as gz
 import pickle as pkl
@@ -31,8 +39,10 @@ def create_clean_tokens(s: str) -> Set[str]:
 def tokenize_inputs(inp_set: Set[str]) -> List[Set[str]]:
     """ Intake a set of strings and compute them into sets of tokens
     """
-    tmp = [create_clean_tokens(i) for i in list(inp_set)]
+    tmp = [create_clean_tokens(i) for i in tqdm(list(inp_set))]
     return tmp
+
+
 
 
 def compute_overlap(
@@ -58,39 +68,30 @@ def compute_overlap(
     btoks = tokenize_inputs(blurbset)
     mtoks = tokenize_inputs(machampset)
 
+
     tfmodel = TfidfVectorizer()
 
-    btok_mat = tfmodel.fit_transform(btoks)
-    mtok_mat = tfmodel.transform(mtoks)
+    btok_mat = tfmodel.fit_transform(btoks).toarray()
 
-    # TODO: LEON
-    # The cosine_similarity fxn will fail here due to memory issues
-    # we can home cook a cos-sim, but i wonder if a matrix math is sufficient
+    dataloader = torch.utils.data.DataLoader(mtoks, batch_size=1000, shuffle=False, num_workers=0)
+    result = []
+    offset = 0
+    for batch in tqdm(dataloader):
+        mtok_mat = tfmodel.transform(batch)
+        sims = cosine_similarity(mtok_mat, btok_mat)
+        max_sims = sims.max(axis=1)
+        for i in np.where(max_sims > thresh)[0]:
+            result.append((max_sims[i], mset[i+offset]))
+        offset += len(batch)
 
-    # Compute the max overlap between the 2
-    t0 = time()
-    #overlap = cosine_similarity(btok_mat, mtok_mat) 
-    overlap = btok_mat * mtok_mat.T 
-    
-    print(time() - t0, "Elapsed time")
-
-    # TODO: LEON
-    # I needed to write a loop as just a overlap.max(axis=0) will collapse due to size
-    # Ideally here, you just need to ask if, for an entry in the machamp dataset
-    # who the largest 
-
-    # Ideally you want to do:
-    #overlap.max(axis=1) > 0.8 (find any machamp entry with the largest BLURB overlap, if the blurb cos-sim is over let's say 0.8, then it has a high similarity to a sentence in BLURB
-    # Collapse over all blurb indices 
-    # The matrix overlap is N_examples_in_blurb x N_examples_in_machamp
-    overlap_sents = []
-    for idx in tqdm(range(mtok_mat.shape[0])):
-        if overlap[:, idx].max() >= thresh:
-            overlap_sents.append(mset[idx])
-
-    return overlap, overlap_sents
+    return result
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--rank", type=int, default=0)
+    parser.add_argument("--worldsize", type=int, default=1)
+    args = parser.parse_args()
 
     print("Loading Data")
     with gzip.open("linkbert_blurb.gz.pkl", "rb") as f:
@@ -111,21 +112,41 @@ if __name__ == "__main__":
 
     machamp_splits = {"train": machamp_train, "val": machamp_val}
 
+    if not os.path.exists("results"):
+        os.mkdir("results")
+
     for dsplit in ["train", "dev", "test"]:
 
         for msplit in machamp_splits.keys():
             
             machamp_data = machamp_splits[msplit]
 
-            for dset in machamp_data.keys():
+            for i, dset in tqdm(enumerate(sorted(machamp_data.keys()))):
+                if "biomrc" in dset:
+                    continue
+
+                if i % args.worldsize != args.rank:
+                    continue
+
                 print("BLURB-" + dsplit + "; Machamp=" + msplit + "; Dset=", dset)
 
-                #overlap_blurb = compute_overlap(blurb[dsplit], machamp_data[dset])
-                #overlap_blurb_ner = compute_overlap(blurb_ner[dsplit], machamp_data[dset])
-                #overlap_blurb_text_pairs = compute_overlap(blurb_text_pairs[dsplit], machamp_data[dset])
+                # #write overlap to file if it doesn't exist
+                fname = "results/overlap_" + dsplit + "_" + msplit + "_" + dset + ".txt"
+                if not os.path.exists(fname):
+                    with open(fname, "w") as f:
+                        for overlap, sent in compute_overlap(blurb[dsplit], machamp_data[dset]):
+                            f.write(str(overlap) + "\t" + sent + "\n")
+                
+                #write overlap with text pairs to file if it doesn't exist
+                fname = "results/overlap_" + dsplit + "_" + msplit + "_" + dset + "_text_pairs.txt"
+                if not os.path.exists(fname):
+                    with open(fname, "w") as f:
+                        for overlap, sent in compute_overlap(blurb_text_pairs[dsplit], machamp_data[dset]):
+                            f.write(str(overlap) + "\t" + sent + "\n")
 
-                #print("BLURB overlap =", )
-                #print("BLURB (NER) overlap =", )
-                #print("BLURB (text pairs) overlap =", )
-            
-            
+                # #write overlap with ner to file if it doesn't exist
+                fname = "results/overlap_" + dsplit + "_" + msplit + "_" + dset + "_ner.txt"
+                if not os.path.exists(fname):
+                    with open(fname, "w") as f:
+                        for overlap, sent in compute_overlap(blurb_ner[dsplit], machamp_data[dset]):
+                            f.write(str(overlap) + "\t" + sent + "\n")

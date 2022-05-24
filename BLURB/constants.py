@@ -7,7 +7,9 @@ task_mapping = {
     "named_entity_recognition": "_ner",
     "qa": ["_CLF", "_SEQ"],
     "re": "_RE",
-    "sts": "_sts"
+    "sts": "_sts",
+    "event_extraction_trigger_recognition": "_NER",
+    "event_extraction_edge_classification": "_RE",
 }
 
 # Text pairs

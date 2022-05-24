@@ -19,6 +19,9 @@ from pathlib import Path
 from datasets import load_dataset
 from datasets.dataset_dict import DatasetDict
 from typing import List, Dict, Set
+
+from tqdm import tqdm
+
 from constants import BLURB_datasets, text_pairs, ner_examples, task_mapping
 import gzip 
 import pickle as pkl
@@ -83,7 +86,7 @@ def collect_blurb_data(data_paths: List[Path]) -> Dict[str, Set[str]]:
     blurb_ner = {"train": set(), "dev": set(), "test": set()}
     blurb = {"train": set(), "dev": set(), "test": set()}
 
-    for dpath in data_paths:
+    for dpath in tqdm(data_paths, desc="Collecting BLURB"):
         name = get_name(dpath)
 
         print("Dataset", name)
@@ -134,11 +137,11 @@ def collect_machamp_data(tasks: List[Path], split: str) -> Dict[str, Set[str]]:
     """
     machamp_data = {}
 
-    non_ner_qa_tasks = [t for t in tasks if "qa" not in t.__str__() and "named_entity" not in t.__str__()]
-    ner_tasks = [t for t in tasks if "named_entity" in t.__str__()]
+    ner_tasks = [t for t in tasks if "named_entity" in t.__str__() or "trigger_recognition" in t.__str__()]
     qa_tasks = [t for t in tasks if "qa" in t.__str__()]
+    non_ner_qa_tasks = [t for t in tasks if t not in ner_tasks and t not in qa_tasks]
 
-    for tk in non_ner_qa_tasks:
+    for tk in tqdm(non_ner_qa_tasks, desc="Collecting non-NER/QA"):
         tk_name = tk.__str__().split("/")[-1]
         ext = task_mapping[tk_name]
         datapaths = tk.glob("*." + split)
@@ -160,7 +163,7 @@ def collect_machamp_data(tasks: List[Path], split: str) -> Dict[str, Set[str]]:
                 print("Issue parsing with", fname)
 
     # Named entity recognition needs to be grouped by new-lines
-    for tk in ner_tasks:
+    for tk in tqdm(ner_tasks, desc="Collecting NER"):
         tk_name = tk.__str__().split("/")[-1]
         ext = task_mapping[tk_name]
         datapaths = tk.glob("*." + split)
@@ -183,7 +186,7 @@ def collect_machamp_data(tasks: List[Path], split: str) -> Dict[str, Set[str]]:
 
     # Split QA tasks with both _CLF/_SEQ type tokens
     tk_name = qa_tasks[0].__str__().split("/")[-1]
-    for ext in task_mapping[tk_name]:
+    for ext in tqdm(task_mapping[tk_name], desc="Collecting QA"):
         datapaths = qa_tasks[0].glob("*." + split)
         datapaths = [i for i in datapaths if ext in i.__str__()]
         
