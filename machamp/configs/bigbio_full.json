@@ -1,0 +1,1307 @@
+{
+ "sts_bio_sim_verb": {
+  "train_data_path": "data/bigbio/sts/bio_sim_verb_sts.train",
+  "validation_data_path": "data/bigbio/sts/bio_sim_verb_sts.valid",
+  "sent_idxs": [
+   0,
+   1
+  ],
+  "tasks": {
+   "bio_sim_verb_sts": {
+    "column_idx": 2,
+    "task_type": "classification"
+   }
+  }
+ },
+ "sts_biosses": {
+  "train_data_path": "data/bigbio/sts/biosses_sts.train",
+  "validation_data_path": "data/bigbio/sts/biosses_sts.valid",
+  "sent_idxs": [
+   0,
+   1
+  ],
+  "tasks": {
+   "biosses_sts": {
+    "column_idx": 2,
+    "task_type": "classification"
+   }
+  }
+ },
+ "sts_ehr_rel": {
+  "train_data_path": "data/bigbio/sts/ehr_rel_sts.train",
+  "validation_data_path": "data/bigbio/sts/ehr_rel_sts.valid",
+  "sent_idxs": [
+   0,
+   1
+  ],
+  "tasks": {
+   "ehr_rel_sts": {
+    "column_idx": 2,
+    "task_type": "classification"
+   }
+  }
+ },
+ "sts_mayosrs": {
+  "train_data_path": "data/bigbio/sts/mayosrs_sts.train",
+  "validation_data_path": "data/bigbio/sts/mayosrs_sts.valid",
+  "sent_idxs": [
+   0,
+   1
+  ],
+  "tasks": {
+   "mayosrs_sts": {
+    "column_idx": 2,
+    "task_type": "classification"
+   }
+  }
+ },
+ "sts_minimayosrs": {
+  "train_data_path": "data/bigbio/sts/minimayosrs_sts.train",
+  "validation_data_path": "data/bigbio/sts/minimayosrs_sts.valid",
+  "sent_idxs": [
+   0,
+   1
+  ],
+  "tasks": {
+   "minimayosrs_sts": {
+    "column_idx": 2,
+    "task_type": "classification"
+   }
+  }
+ },
+ "sts_mqp": {
+  "train_data_path": "data/bigbio/sts/mqp_sts.train",
+  "validation_data_path": "data/bigbio/sts/mqp_sts.valid",
+  "sent_idxs": [
+   0,
+   1
+  ],
+  "tasks": {
+   "mqp_sts": {
+    "column_idx": 2,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_an_em": {
+  "train_data_path": "data/bigbio/coref/an_em_COREF.train",
+  "validation_data_path": "data/bigbio/coref/an_em_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "an_em_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_bionlp_shared_task_2009": {
+  "train_data_path": "data/bigbio/coref/bionlp_shared_task_2009_COREF.train",
+  "validation_data_path": "data/bigbio/coref/bionlp_shared_task_2009_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_shared_task_2009_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_bionlp_st_2011_epi": {
+  "train_data_path": "data/bigbio/coref/bionlp_st_2011_epi_COREF.train",
+  "validation_data_path": "data/bigbio/coref/bionlp_st_2011_epi_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2011_epi_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_bionlp_st_2011_ge": {
+  "train_data_path": "data/bigbio/coref/bionlp_st_2011_ge_COREF.train",
+  "validation_data_path": "data/bigbio/coref/bionlp_st_2011_ge_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2011_ge_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_bionlp_st_2011_id": {
+  "train_data_path": "data/bigbio/coref/bionlp_st_2011_id_COREF.train",
+  "validation_data_path": "data/bigbio/coref/bionlp_st_2011_id_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2011_id_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_bionlp_st_2013_cg": {
+  "train_data_path": "data/bigbio/coref/bionlp_st_2013_cg_COREF.train",
+  "validation_data_path": "data/bigbio/coref/bionlp_st_2013_cg_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2013_cg_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_bionlp_st_2013_pc": {
+  "train_data_path": "data/bigbio/coref/bionlp_st_2013_pc_COREF.train",
+  "validation_data_path": "data/bigbio/coref/bionlp_st_2013_pc_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2013_pc_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_biorelex": {
+  "train_data_path": "data/bigbio/coref/biorelex_COREF.train",
+  "validation_data_path": "data/bigbio/coref/biorelex_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "biorelex_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "coref_mlee": {
+  "train_data_path": "data/bigbio/coref/mlee_COREF.train",
+  "validation_data_path": "data/bigbio/coref/mlee_COREF.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "mlee_COREF": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "classification_chemdner": {
+  "train_data_path": "data/bigbio/classification/chemdner_TEXT.train",
+  "validation_data_path": "data/bigbio/classification/chemdner_TEXT.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "chemdner_TEXT": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "classification_geokhoj_v1": {
+  "train_data_path": "data/bigbio/classification/geokhoj_v1_TEXT.train",
+  "validation_data_path": "data/bigbio/classification/geokhoj_v1_TEXT.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "geokhoj_v1_TEXT": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "classification_scicite": {
+  "train_data_path": "data/bigbio/classification/scicite_TEXT.train",
+  "validation_data_path": "data/bigbio/classification/scicite_TEXT.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "scicite_TEXT": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "qa_biomrc_small_B": {
+  "train_data_path": "data/bigbio/qa/biomrc_small_B_SEQ.train",
+  "validation_data_path": "data/bigbio/qa/biomrc_small_B_SEQ.valid",
+  "word_idx": 0,
+  "tasks": {
+   "biomrc_small_B_SEQ": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "qa_pubmed_qa_labeled_fold0": {
+  "train_data_path": "data/bigbio/qa/pubmed_qa_labeled_fold0_CLF.train",
+  "validation_data_path": "data/bigbio/qa/pubmed_qa_labeled_fold0_CLF.valid",
+  "sent_idxs": [
+   0,
+   1
+  ],
+  "tasks": {
+   "pubmed_qa_labeled_fold0_CLF": {
+    "column_idx": 2,
+    "task_type": "classification"
+   }
+  }
+ },
+ "qa_sciq": {
+  "train_data_path": "data/bigbio/qa/sciq_SEQ.train",
+  "validation_data_path": "data/bigbio/qa/sciq_SEQ.valid",
+  "word_idx": 0,
+  "tasks": {
+   "sciq_SEQ": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_bionlp_shared_task_2009": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_shared_task_2009_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_shared_task_2009_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_shared_task_2009_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_bionlp_st_2011_epi": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_epi_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_epi_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2011_epi_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_bionlp_st_2011_ge": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_ge_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_ge_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2011_ge_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_bionlp_st_2011_id": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_id_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_id_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2011_id_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_bionlp_st_2013_cg": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_cg_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_cg_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2013_cg_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_bionlp_st_2013_ge": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_ge_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_ge_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2013_ge_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_bionlp_st_2013_gro": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_gro_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_gro_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2013_gro_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_bionlp_st_2013_pc": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_pc_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_pc_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2013_pc_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_mlee": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/mlee_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/mlee_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "mlee_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_trigger_recognition_pdr": {
+  "train_data_path": "data/bigbio/event_extraction_trigger_recognition/pdr_NER.train",
+  "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/pdr_NER.valid",
+  "word_idx": 0,
+  "tasks": {
+   "pdr_NER": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_scai_chemical": {
+  "train_data_path": "data/bigbio/named_entity_recognition/scai_chemical_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/scai_chemical_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "scai_chemical_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_mirna": {
+  "train_data_path": "data/bigbio/named_entity_recognition/mirna_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/mirna_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "mirna_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_cellfinder": {
+  "train_data_path": "data/bigbio/named_entity_recognition/cellfinder_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/cellfinder_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "cellfinder_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2013_ge": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2013_ge_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2013_ge_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2013_ge_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_seth_corpus": {
+  "train_data_path": "data/bigbio/named_entity_recognition/seth_corpus_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/seth_corpus_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "seth_corpus_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_nlmchem": {
+  "train_data_path": "data/bigbio/named_entity_recognition/nlmchem_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/nlmchem_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "nlmchem_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_diann_iber_eval_en": {
+  "train_data_path": "data/bigbio/named_entity_recognition/diann_iber_eval_en_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/diann_iber_eval_en_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "diann_iber_eval_en_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_spl_adr_200db_train": {
+  "train_data_path": "data/bigbio/named_entity_recognition/spl_adr_200db_train_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/spl_adr_200db_train_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "spl_adr_200db_train_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2011_epi": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2011_epi_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2011_epi_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2011_epi_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_an_em": {
+  "train_data_path": "data/bigbio/named_entity_recognition/an_em_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/an_em_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "an_em_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2013_cg": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2013_cg_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2013_cg_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2013_cg_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2011_ge": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2011_ge_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2011_ge_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2011_ge_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_pico_extraction": {
+  "train_data_path": "data/bigbio/named_entity_recognition/pico_extraction_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/pico_extraction_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "pico_extraction_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bc5cdr": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bc5cdr_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bc5cdr_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bc5cdr_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_mlee": {
+  "train_data_path": "data/bigbio/named_entity_recognition/mlee_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/mlee_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "mlee_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2011_rel": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2011_rel_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2011_rel_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2011_rel_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_medmentions_full": {
+  "train_data_path": "data/bigbio/named_entity_recognition/medmentions_full_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/medmentions_full_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "medmentions_full_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_medmentions_st21pv": {
+  "train_data_path": "data/bigbio/named_entity_recognition/medmentions_st21pv_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/medmentions_st21pv_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "medmentions_st21pv_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_muchmore_en": {
+  "train_data_path": "data/bigbio/named_entity_recognition/muchmore_en_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/muchmore_en_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "muchmore_en_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_linnaeus_filtered": {
+  "train_data_path": "data/bigbio/named_entity_recognition/linnaeus_filtered_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/linnaeus_filtered_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "linnaeus_filtered_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_linnaeus": {
+  "train_data_path": "data/bigbio/named_entity_recognition/linnaeus_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/linnaeus_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "linnaeus_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_ncbi_disease": {
+  "train_data_path": "data/bigbio/named_entity_recognition/ncbi_disease_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/ncbi_disease_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "ncbi_disease_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_ddi_corpus": {
+  "train_data_path": "data/bigbio/named_entity_recognition/ddi_corpus_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/ddi_corpus_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "ddi_corpus_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2019_bb": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2019_bb_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2019_bb_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2019_bb_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_biorelex": {
+  "train_data_path": "data/bigbio/named_entity_recognition/biorelex_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/biorelex_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "biorelex_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_anat_em": {
+  "train_data_path": "data/bigbio/named_entity_recognition/anat_em_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/anat_em_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "anat_em_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2013_pc": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2013_pc_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2013_pc_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2013_pc_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_genia_term_corpus": {
+  "train_data_path": "data/bigbio/named_entity_recognition/genia_term_corpus_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/genia_term_corpus_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "genia_term_corpus_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_chebi_nactem_abstr_ann1": {
+  "train_data_path": "data/bigbio/named_entity_recognition/chebi_nactem_abstr_ann1_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/chebi_nactem_abstr_ann1_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "chebi_nactem_abstr_ann1_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_chebi_nactem_fullpaper": {
+  "train_data_path": "data/bigbio/named_entity_recognition/chebi_nactem_fullpaper_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/chebi_nactem_fullpaper_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "chebi_nactem_fullpaper_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_hprd50": {
+  "train_data_path": "data/bigbio/named_entity_recognition/hprd50_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/hprd50_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "hprd50_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_cadec": {
+  "train_data_path": "data/bigbio/named_entity_recognition/cadec_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/cadec_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "cadec_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_gnormplus": {
+  "train_data_path": "data/bigbio/named_entity_recognition/gnormplus_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/gnormplus_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "gnormplus_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_shared_task_2009": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_shared_task_2009_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_shared_task_2009_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_shared_task_2009_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_chemprot": {
+  "train_data_path": "data/bigbio/named_entity_recognition/chemprot_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/chemprot_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "chemprot_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bioinfer": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bioinfer_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bioinfer_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bioinfer_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_scai_disease": {
+  "train_data_path": "data/bigbio/named_entity_recognition/scai_disease_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/scai_disease_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "scai_disease_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_verspoor_2013": {
+  "train_data_path": "data/bigbio/named_entity_recognition/verspoor_2013_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/verspoor_2013_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "verspoor_2013_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2013_gro": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2013_gro_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2013_gro_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2013_gro_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_ebm_pico": {
+  "train_data_path": "data/bigbio/named_entity_recognition/ebm_pico_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/ebm_pico_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "ebm_pico_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_chia": {
+  "train_data_path": "data/bigbio/named_entity_recognition/chia_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/chia_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "chia_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_genetaggold": {
+  "train_data_path": "data/bigbio/named_entity_recognition/genetaggold_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/genetaggold_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "genetaggold_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bioscope_abstracts": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bioscope_abstracts_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bioscope_abstracts_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bioscope_abstracts_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bioscope_papers": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bioscope_papers_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bioscope_papers_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bioscope_papers_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_pdr": {
+  "train_data_path": "data/bigbio/named_entity_recognition/pdr_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/pdr_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "pdr_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_bionlp_st_2011_id": {
+  "train_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2011_id_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/bionlp_st_2011_id_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "bionlp_st_2011_id_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_nlm_gene": {
+  "train_data_path": "data/bigbio/named_entity_recognition/nlm_gene_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/nlm_gene_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "nlm_gene_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_tmvar_v1": {
+  "train_data_path": "data/bigbio/named_entity_recognition/tmvar_v1_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/tmvar_v1_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "tmvar_v1_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_mantra_gsc_en_emea": {
+  "train_data_path": "data/bigbio/named_entity_recognition/mantra_gsc_en_emea_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/mantra_gsc_en_emea_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "mantra_gsc_en_emea_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_mantra_gsc_en_medline": {
+  "train_data_path": "data/bigbio/named_entity_recognition/mantra_gsc_en_medline_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/mantra_gsc_en_medline_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "mantra_gsc_en_medline_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_mantra_gsc_en_patents": {
+  "train_data_path": "data/bigbio/named_entity_recognition/mantra_gsc_en_patents_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/mantra_gsc_en_patents_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "mantra_gsc_en_patents_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_pcr": {
+  "train_data_path": "data/bigbio/named_entity_recognition/pcr_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/pcr_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "pcr_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_osiris": {
+  "train_data_path": "data/bigbio/named_entity_recognition/osiris_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/osiris_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "osiris_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "named_entity_recognition_chemdner": {
+  "train_data_path": "data/bigbio/named_entity_recognition/chemdner_ner.train",
+  "validation_data_path": "data/bigbio/named_entity_recognition/chemdner_ner.valid",
+  "word_idx": 0,
+  "tasks": {
+   "chemdner_ner": {
+    "column_idx": 1,
+    "task_type": "seq"
+   }
+  }
+ },
+ "event_extraction_edge_classification_bionlp_shared_task_2009": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_shared_task_2009_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_shared_task_2009_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_shared_task_2009_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_bionlp_st_2011_epi": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2011_epi_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2011_epi_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2011_epi_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_bionlp_st_2011_ge": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2011_ge_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2011_ge_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2011_ge_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_bionlp_st_2011_id": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2011_id_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2011_id_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2011_id_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_bionlp_st_2013_cg": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2013_cg_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2013_cg_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2013_cg_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_bionlp_st_2013_ge": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2013_ge_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2013_ge_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2013_ge_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_bionlp_st_2013_gro": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2013_gro_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2013_gro_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2013_gro_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_bionlp_st_2013_pc": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2013_pc_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/bionlp_st_2013_pc_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2013_pc_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_mlee": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/mlee_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/mlee_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "mlee_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "event_extraction_edge_classification_pdr": {
+  "train_data_path": "data/bigbio/event_extraction_edge_classification/pdr_RE.train",
+  "validation_data_path": "data/bigbio/event_extraction_edge_classification/pdr_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "pdr_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_an_em": {
+  "train_data_path": "data/bigbio/re/an_em_RE.train",
+  "validation_data_path": "data/bigbio/re/an_em_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "an_em_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_bioinfer": {
+  "train_data_path": "data/bigbio/re/bioinfer_RE.train",
+  "validation_data_path": "data/bigbio/re/bioinfer_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bioinfer_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_bionlp_st_2013_gro": {
+  "train_data_path": "data/bigbio/re/bionlp_st_2013_gro_RE.train",
+  "validation_data_path": "data/bigbio/re/bionlp_st_2013_gro_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2013_gro_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_bionlp_st_2019_bb": {
+  "train_data_path": "data/bigbio/re/bionlp_st_2019_bb_RE.train",
+  "validation_data_path": "data/bigbio/re/bionlp_st_2019_bb_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "bionlp_st_2019_bb_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_biorelex": {
+  "train_data_path": "data/bigbio/re/biorelex_RE.train",
+  "validation_data_path": "data/bigbio/re/biorelex_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "biorelex_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_chemprot": {
+  "train_data_path": "data/bigbio/re/chemprot_RE.train",
+  "validation_data_path": "data/bigbio/re/chemprot_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "chemprot_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_chia": {
+  "train_data_path": "data/bigbio/re/chia_RE.train",
+  "validation_data_path": "data/bigbio/re/chia_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "chia_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_ddi_corpus": {
+  "train_data_path": "data/bigbio/re/ddi_corpus_RE.train",
+  "validation_data_path": "data/bigbio/re/ddi_corpus_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "ddi_corpus_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_genia_relation_corpus": {
+  "train_data_path": "data/bigbio/re/genia_relation_corpus_RE.train",
+  "validation_data_path": "data/bigbio/re/genia_relation_corpus_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "genia_relation_corpus_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_hprd50": {
+  "train_data_path": "data/bigbio/re/hprd50_RE.train",
+  "validation_data_path": "data/bigbio/re/hprd50_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "hprd50_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_iepa": {
+  "train_data_path": "data/bigbio/re/iepa_RE.train",
+  "validation_data_path": "data/bigbio/re/iepa_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "iepa_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_lll": {
+  "train_data_path": "data/bigbio/re/lll_RE.train",
+  "validation_data_path": "data/bigbio/re/lll_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "lll_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_mlee": {
+  "train_data_path": "data/bigbio/re/mlee_RE.train",
+  "validation_data_path": "data/bigbio/re/mlee_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "mlee_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_seth_corpus": {
+  "train_data_path": "data/bigbio/re/seth_corpus_RE.train",
+  "validation_data_path": "data/bigbio/re/seth_corpus_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "seth_corpus_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ },
+ "re_verspoor_2013": {
+  "train_data_path": "data/bigbio/re/verspoor_2013_RE.train",
+  "validation_data_path": "data/bigbio/re/verspoor_2013_RE.valid",
+  "sent_idxs": [
+   0
+  ],
+  "tasks": {
+   "verspoor_2013_RE": {
+    "column_idx": 1,
+    "task_type": "classification"
+   }
+  }
+ }
+}
