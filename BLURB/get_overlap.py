@@ -446,6 +446,7 @@ if __name__ == "__main__":
         with gzip.open("save_blurb_by_dataset/blurb_test.gz.pkl", "wb") as f:
             pkl.dump(btest, f)
 
+        print("Saving Machamp")
         with gzip.open(
             "save_blurb_by_dataset/machamp_trainvalid.gz.pkl", "wb"
         ) as f:
