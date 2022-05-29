@@ -22,7 +22,7 @@ from typing import List, Dict, Set
 
 from tqdm import tqdm
 
-from constants import BLURB_datasets, text_pairs, ner_examples, task_mapping
+from constants import text_pairs, ner_examples, task_mapping
 import gzip 
 import pickle as pkl
 
@@ -76,6 +76,40 @@ def clean_string(s: str) -> str:
     return s
 
 
+def collect_blurb_data_per_dataset(data_paths: List[Path]) -> Dict[str, Set[str]]:
+    """Collects all BLURB datasets for a given split based on 
+    dataset type.
+    """
+    blurb_train = {}
+    blurb_dev = {}
+    blurb_test = {}
+
+    for dpath in tqdm(data_paths, desc="Collecting BLURB"):
+        name = get_name(dpath)
+        key = name.split("_hf")[0]
+
+        print("Dataset", name)
+        bdata = get_linkbert_blurb_preprocessed_data(dpath)
+        blurb_sentences = get_blurb_sentences(bdata, name)
+
+        if key not in blurb_train.keys():
+            blurb_train.update({key: blurb_sentences["train"]})
+        else:
+            blurb_train[key] = blurb_train[key].union(blurb_sentences["train"])
+
+        if key not in blurb_dev.keys():
+            blurb_dev.update({key: blurb_sentences["dev"]})
+        else:
+            blurb_dev[key] = blurb_dev[key].union(blurb_sentences["dev"])
+
+        if key not in blurb_test.keys():
+            blurb_test.update({key: blurb_sentences["test"]})
+        else:
+            blurb_test[key] = blurb_test[key].union(blurb_sentences["test"])
+
+    return blurb_train, blurb_dev, blurb_test
+
+
 def collect_blurb_data(data_paths: List[Path]) -> Dict[str, Set[str]]:
     """Collects ALL BLURB train/val/test splits.
     Creates dict holding each data split.
@@ -88,6 +122,7 @@ def collect_blurb_data(data_paths: List[Path]) -> Dict[str, Set[str]]:
 
     for dpath in tqdm(data_paths, desc="Collecting BLURB"):
         name = get_name(dpath)
+        bdata = get_linkbert_blurb_preprocessed_data(dpath)
 
         print("Dataset", name)
         bdata = get_linkbert_blurb_preprocessed_data(dpath)
