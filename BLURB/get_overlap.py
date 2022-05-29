@@ -426,7 +426,7 @@ if __name__ == "__main__":
             parents=True, exist_ok=True
         )
 
-        btrain, bdev, btest = collect_blurb_data(data_paths)
+        btrain, bdev, btest = collect_blurb_data_per_dataset(data_paths)
 
         # Get MACHAMP training data
         tasks = list(machamp_dir.glob("*/"))
