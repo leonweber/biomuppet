@@ -43,8 +43,6 @@ def tokenize_inputs(inp_set: Set[str]) -> List[Set[str]]:
     return tmp
 
 
-
-
 def compute_overlap(
     blurbset: List[str],
     machampset: List[str],
@@ -94,19 +92,19 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("Loading Data")
-    with gzip.open("linkbert_blurb.gz.pkl", "rb") as f:
+    with gzip.open("save_machamp_by_dataset/linkbert_blurb.gz.pkl", "rb") as f:
         blurb = pkl.load(f)
 
-    with gzip.open("linkbert_blurb_ner.gz.pkl", "rb") as f:
+    with gzip.open("save_machamp_by_dataset/linkbert_blurb_ner.gz.pkl", "rb") as f:
         blurb_ner = pkl.load(f)
 
-    with gzip.open("linkbert_blurb_text_pairs.gz.pkl", "rb") as f:
+    with gzip.open("save_machamp_by_dataset/linkbert_blurb_text_pairs.gz.pkl", "rb") as f:
         blurb_text_pairs = pkl.load(f)
 
-    with gzip.open("machamp_train.gz.pkl", "rb") as f:
+    with gzip.open("save_machamp_by_dataset/machamp_train.gz.pkl", "rb") as f:
         machamp_train = pkl.load(f)
 
-    with gzip.open("machamp_val.gz.pkl", "rb") as f:
+    with gzip.open("save_machamp_by_dataset/machamp_val.gz.pkl", "rb") as f:
         machamp_val = pkl.load(f)
 
 
