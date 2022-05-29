@@ -92,59 +92,40 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("Loading Data")
-    with gzip.open("save_machamp_by_dataset/linkbert_blurb.gz.pkl", "rb") as f:
-        blurb = pkl.load(f)
+    with gzip.open("save_blurb_by_dataset/blurb_train.gz.pkl", "rb") as f:
+        blurb_train = pkl.load(f)
 
-    with gzip.open("save_machamp_by_dataset/linkbert_blurb_ner.gz.pkl", "rb") as f:
-        blurb_ner = pkl.load(f)
+    with gzip.open("save_blurb_by_dataset/blurb_dev.gz.pkl", "rb") as f:
+        blurb_dev = pkl.load(f)
 
-    with gzip.open("save_machamp_by_dataset/linkbert_blurb_text_pairs.gz.pkl", "rb") as f:
-        blurb_text_pairs = pkl.load(f)
+    with gzip.open("save_blurb_by_dataset/blurb_test.gz.pkl", "rb") as f:
+        blurb_test = pkl.load(f)
 
-    with gzip.open("save_machamp_by_dataset/machamp_train.gz.pkl", "rb") as f:
-        machamp_train = pkl.load(f)
+    with gzip.open("save_blurb_by_dataset/machamp_trainvalid.gz.pkl", "rb") as f:
+        machamp_splits = pkl.load(f)
 
-    with gzip.open("save_machamp_by_dataset/machamp_val.gz.pkl", "rb") as f:
-        machamp_val = pkl.load(f)
-
-
-    machamp_splits = {"train": machamp_train, "val": machamp_val}
+    
+    blurb = {"train": blurb_train, "valid": blurb_dev, "test": blurb_test}
 
     if not os.path.exists("results"):
         os.mkdir("results")
 
-    for dsplit in ["train", "dev", "test"]:
+    for dsplit in ["train", "valid"]:
+        machamp_data = machamp_splits[dsplit]
 
-        for msplit in machamp_splits.keys():
-            
-            machamp_data = machamp_splits[msplit]
+        for msplit in blurb.keys():
+            bdata = blurb[msplit]
 
-            for i, dset in tqdm(enumerate(sorted(machamp_data.keys()))):
-                if "biomrc" in dset:
-                    continue
+            for i, dset in tqdm(enumerate(sorted(bdata.keys()))):
 
                 if i % args.worldsize != args.rank:
                     continue
 
-                print("BLURB-" + dsplit + "; Machamp=" + msplit + "; Dset=", dset)
+                print("BLURB-" + msplit + "; Machamp=" + dsplit + "; Dset=", dset)
 
                 # #write overlap to file if it doesn't exist
-                fname = "results/overlap_" + dsplit + "_" + msplit + "_" + dset + ".txt"
+                fname = "results/overlap_machamp_" + dsplit + "_blurb_" + msplit + "_" + dset + ".txt"
                 if not os.path.exists(fname):
                     with open(fname, "w") as f:
-                        for overlap, sent in compute_overlap(blurb[dsplit], machamp_data[dset]):
-                            f.write(str(overlap) + "\t" + sent + "\n")
-                
-                #write overlap with text pairs to file if it doesn't exist
-                fname = "results/overlap_" + dsplit + "_" + msplit + "_" + dset + "_text_pairs.txt"
-                if not os.path.exists(fname):
-                    with open(fname, "w") as f:
-                        for overlap, sent in compute_overlap(blurb_text_pairs[dsplit], machamp_data[dset]):
-                            f.write(str(overlap) + "\t" + sent + "\n")
-
-                # #write overlap with ner to file if it doesn't exist
-                fname = "results/overlap_" + dsplit + "_" + msplit + "_" + dset + "_ner.txt"
-                if not os.path.exists(fname):
-                    with open(fname, "w") as f:
-                        for overlap, sent in compute_overlap(blurb_ner[dsplit], machamp_data[dset]):
+                        for overlap, sent in compute_overlap(bdata[dset], machamp_data):
                             f.write(str(overlap) + "\t" + sent + "\n")
