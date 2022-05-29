@@ -190,7 +190,87 @@ def parse_machamp_ner(filename: Path) -> Set[str]:
     return sents
 
 
-def collect_machamp_data(
+def collect_machamp_data(tasks: List[Path]) -> Dict[str, Set[str]]:
+    """Given a machamp task, construct a set of all sentences from all datasets in it"""
+
+    machamp_data = {"train": set(), "valid": set()}
+
+    ner_tasks = [
+        t
+        for t in tasks
+        if "named_entity" in t.__str__()
+        or "trigger_recognition" in t.__str__()
+    ]
+    qa_tasks = [t for t in tasks if "qa" in t.__str__()]
+    non_ner_qa_tasks = [
+        t for t in tasks if t not in ner_tasks and t not in qa_tasks
+    ]
+
+    for tk in tqdm(non_ner_qa_tasks, desc="Collecting non-NER/QA"):
+        tk_name = tk.__str__().split("/")[-1]
+        ext = task_mapping[tk_name]
+
+        for split in ["train", "valid"]:
+            datapaths = tk.glob("*." + split)
+
+            for fname in datapaths:
+                try:
+                    x = pd.read_csv(
+                        fname, sep="\t", header=None
+                    )  # Two columns, space separated
+                    machamp_data[split] = machamp_data[split].union(
+                        set(x.iloc[:, 0].tolist())
+                    )
+
+                except pd.errors.EmptyDataError:
+                    print("Empty dataset with dataset", fname)
+                except pd.errors.ParserError:
+                    print("Issue parsing with", fname)
+
+    # Named entity recognition needs to be grouped by new-lines
+    for tk in tqdm(ner_tasks, desc="Collecting NER"):
+        tk_name = tk.__str__().split("/")[-1]
+        ext = task_mapping[tk_name]
+
+        for split in ["train", "valid"]:
+            datapaths = tk.glob("*." + split)
+
+            for fname in datapaths:
+
+                try:
+                    x = parse_machamp_ner(fname)
+                    machamp_data[split] = machamp_data[split].union(x)
+
+                except pd.errors.EmptyDataError:
+                    print("Empty dataset with dataset", fname)
+                except pd.errors.ParserError:
+                    print("Issue parsing with", fname)
+
+    # Split QA tasks with both _CLF/_SEQ type tokens
+    tk_name = qa_tasks[0].__str__().split("/")[-1]
+    for split in ["train", "valid"]:
+        for ext in tqdm(task_mapping[tk_name], desc="Collecting QA"):
+            datapaths = qa_tasks[0].glob("*." + split)
+            datapaths = [i for i in datapaths if ext in i.__str__()]
+
+            for fname in datapaths:
+                try:
+                    x = pd.read_csv(
+                        fname, sep="\t", header=None
+                    )  # Two columns, space separated
+                    machamp_data[split] = machamp_data[split].union(
+                        set(x.iloc[:, 0].tolist())
+                    )
+
+                except pd.errors.EmptyDataError:
+                    print("Empty dataset with dataset", fname)
+                except pd.errors.ParserError:
+                    print("Issue parsing with", fname)
+
+    return machamp_data
+
+
+def collect_machamp_data_per_dataset(
     tasks: List[Path], split: str
 ) -> Dict[str, Set[str]]:
     """Given a machamp task, construct a set of all sentences from all datasets in it"""
@@ -283,27 +363,23 @@ def collect_machamp_data(
     return machamp_data
 
 
-def compute_overlap(blurb: Set[str], bbio: Set[str]) -> Set[str]:
-    """Given 2 datasplits, compute set overlap between them"""
-    return blurb.intersection(bbio)
-
-
 # If this is true, then filter blurb by dataset and MACHAMP by the full files. Default is False.
 is_blurb_by_dataset = True
 
 if __name__ == "__main__":
 
+    data_dir = Path(Path(__file__).__str__().split('/')[0]) / "data"
+    machamp_dir = Path(__file__).parents[1] / "machamp/data/bigbio"
+
+    data_paths = list((data_dir / "seqcls").glob("*"))
+    data_paths += list((data_dir / "tokcls").glob("*"))
+
     if is_blurb_by_dataset:
 
+        print("Saving per-Machamp dataset")
         savedir = Path("save_machamp_by_dataset").mkdir(
             parents=True, exist_ok=True
         )
-
-        data_dir = Path(Path(__file__).__str__().split('/')[0]) / "data"
-        machamp_dir = Path(__file__).parents[1] / "machamp/data/bigbio"
-
-        data_paths = list((data_dir / "seqcls").glob("*"))
-        data_paths += list((data_dir / "tokcls").glob("*"))
 
         blurb, blurb_ner, blurb_text_pairs = collect_blurb_data(data_paths)
 
@@ -313,8 +389,8 @@ if __name__ == "__main__":
 
         # For each task, compute the set of terms
 
-        machamp_train = collect_machamp_data(tasks, "train")
-        machamp_val = collect_machamp_data(tasks, "valid")
+        machamp_train = collect_machamp_data_per_dataset(tasks, "train")
+        machamp_val = collect_machamp_data_per_dataset(tasks, "valid")
 
         print("Saving Linkbert Data")
         with gzip.open(
@@ -343,3 +419,34 @@ if __name__ == "__main__":
             "save_machamp_by_dataset/machamp_val.gz.pkl", "wb"
         ) as f:
             pkl.dump(machamp_val, f)
+
+    else:
+        print("Saving per-BLURB dataset")
+        savedir = Path("save_blurb_by_dataset").mkdir(
+            parents=True, exist_ok=True
+        )
+
+        btrain, bdev, btest = collect_blurb_data(data_paths)
+
+        # Get MACHAMP training data
+        tasks = list(machamp_dir.glob("*/"))
+        tasks = [i for i in tasks if ".git" not in i.__str__()]
+
+        machamp_data = collect_machamp_data(tasks)
+
+        print("Saving Linkbert Data")
+        with gzip.open(
+            "save_blurb_by_dataset/blurb_train.gz.pkl", "wb"
+        ) as f:
+            pkl.dump(btrain, f)
+
+        with gzip.open("save_blurb_by_dataset/blurb_dev.gz.pkl", "wb") as f:
+            pkl.dump(bdev, f)
+
+        with gzip.open("save_blurb_by_dataset/blurb_test.gz.pkl", "wb") as f:
+            pkl.dump(btest, f)
+
+        with gzip.open(
+            "save_blurb_by_dataset/machamp_trainvalid.gz.pkl", "wb"
+        ) as f:
+            pkl.dump(machamp_data, f)
