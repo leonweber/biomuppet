@@ -726,17 +726,6 @@
    }
   }
  },
- "named_entity_recognition_cadec": {
-  "train_data_path": "data/bigbio/named_entity_recognition/cadec_ner.train",
-  "validation_data_path": "data/bigbio/named_entity_recognition/cadec_ner.valid",
-  "word_idx": 0,
-  "tasks": {
-   "cadec_ner": {
-    "column_idx": 1,
-    "task_type": "seq"
-   }
-  }
- },
  "named_entity_recognition_gnormplus": {
   "train_data_path": "data/bigbio/named_entity_recognition/gnormplus_ner.train",
   "validation_data_path": "data/bigbio/named_entity_recognition/gnormplus_ner.valid",

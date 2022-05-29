@@ -1,10 +1,7 @@
-local transformer_model = "bert-base-multilingual-cased";
+local transformer_model = "michiyasunaga/BioLinkBERT-base";
 local transformer_dim = 768;
 
-//local transformer_model = "xlm-roberta-large";
-//local transformer_dim = 1024;
-
-local max_len = 128;
+local max_len = 512;
 
 {
     "random_seed": 8446,
@@ -91,7 +88,7 @@ local max_len = 128;
             }
         },
         "default_max_sents": 0,
-        "dropout": 0.3,
+        "dropout": 0.1,
         "encoder": {
             "type": "cls_pooler",
             "cls_is_last_token": false,
@@ -114,8 +111,8 @@ local max_len = 128;
         "batch_sampler": {
             "type": "dataset_buckets",
             "max_tokens": 1024,
-            "batch_size": 32,
-            "sampling_smoothing": 1.0, //1.0 == original size
+            "batch_size": 16,
+            "sampling_smoothing": 0.5, //1.0 == original size
             "sorting_keys": [
                 "tokens"
             ]
@@ -123,15 +120,16 @@ local max_len = 128;
     },
     "trainer": {
         "checkpointer": {
-            "num_serialized_models_to_keep": 1
+            "num_serialized_models_to_keep": -1
         },
-        "use_amp": false, // could save some memory on gpu
-        "grad_norm": 1,
+        "use_amp": true, // could save some memory on gpu
+        "num_gradient_accumulation_steps": 8,
+        "grad_norm": 5,
         "learning_rate_scheduler": {
             "type": "polynomial_decay",
             "warmup_steps": 50000,
         },
-        "num_epochs": 150,
+        "num_epochs": 100,
         "optimizer": {
             "type": "huggingface_adamw",
             "betas": [0.9, 0.99],
@@ -158,7 +156,12 @@ local max_len = 128;
         "validation_metric": "+.run/.sum"
     },
     "distributed": {
-    "cuda_devices": [0, 1, 2, 3],
+        "cuda_devices": [0, 1, 2, 3],
+//        "cuda_devices": [0],
+//        "master_address": "192.168.24.16",
+//        "master_address": "127.0.0.1",
+//        "master_port": "29510",
+//        "num_nodes": 2
     },
     "datasets_for_vocab_creation": [
         "train",
