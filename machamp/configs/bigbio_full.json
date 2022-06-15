@@ -239,17 +239,6 @@
    }
   }
  },
- "qa_biomrc_small_B": {
-  "train_data_path": "data/bigbio/qa/biomrc_small_B_SEQ.train",
-  "validation_data_path": "data/bigbio/qa/biomrc_small_B_SEQ.valid",
-  "word_idx": 0,
-  "tasks": {
-   "biomrc_small_B_SEQ": {
-    "column_idx": 1,
-    "task_type": "seq"
-   }
-  }
- },
  "qa_pubmed_qa_labeled_fold0": {
   "train_data_path": "data/bigbio/qa/pubmed_qa_labeled_fold0_CLF.train",
   "validation_data_path": "data/bigbio/qa/pubmed_qa_labeled_fold0_CLF.valid",
