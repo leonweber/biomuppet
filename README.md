@@ -50,8 +50,5 @@ Start training:
 cd [MACHAMP_ROOT_PATH]; python train.py --dataset_config configs/bigbio_debug.json --node_rank [rank of local node]
 ```
 
-### Project Documentation
-For the project description and open todos, see the project doc on:
-https://docs.google.com/document/d/11w_XxFMrMnRD_FX1oi-tGWI5Z3k7QXB6s7H-GuIr2ow/edit?usp=sharing
 
 
