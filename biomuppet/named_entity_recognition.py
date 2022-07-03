@@ -366,27 +366,38 @@ if __name__ == '__main__':
                 "validation": train_valid["test"],
             })
 
-            ### Write train file
-        with (out / dataset.meta.name).with_suffix(".train").open("w") as f:
-            for example in dataset.data["train"]:
-                for word, label in example['conll']:
-                    if word or label:
-                        f.write(word + "\t" + label + "\n")
-                    else:
-                        f.write("\n")
-                f.write( "\n")
+        #     ### Write train file
+        # with (out / dataset.meta.name).with_suffix(".train").open("w") as f:
+        #     for example in dataset.data["train"]:
+        #         for word, label in example['conll']:
+        #             if word or label:
+        #                 f.write(word + "\t" + label + "\n")
+        #             else:
+        #                 f.write("\n")
+        #         f.write( "\n")
 
-        ### Write validation file
-        with (out / dataset.meta.name).with_suffix(".valid").open("w") as f:
-            for example in dataset.data["validation"]:
-                for word, label in example['conll']:
-                    if word or label:
-                        f.write(word + "\t" + label + "\n")
-                    else:
-                        f.write("\n")
-                f.write( "\n")
+        # ### Write validation file
+        # with (out / dataset.meta.name).with_suffix(".valid").open("w") as f:
+        #     for example in dataset.data["validation"]:
+        #         for word, label in example['conll']:
+        #             if word or label:
+        #                 f.write(word + "\t" + label + "\n")
+        #             else:
+        #                 f.write("\n")
+        #         f.write( "\n")
+
+        ### Write test file
+        if "test" in dataset.data:
+            with (out / dataset.meta.name).with_suffix(".test").open("w") as f:
+                for example in dataset.data["test"]:
+                    for word, label in example['conll']:
+                        if word or label:
+                            f.write(word + "\t" + label + "\n")
+                        else:
+                            f.write("\n")
+                    f.write( "\n")
 
 
-    ## Write Machamp config
-    with open(out / "config.json", "w") as f:
-        json.dump(config, f, indent=1)
+    # ## Write Machamp config
+    # with open(out / "config.json", "w") as f:
+    #     json.dump(config, f, indent=1)

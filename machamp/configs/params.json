@@ -1,12 +1,13 @@
-local transformer_model = "michiyasunaga/BioLinkBERT-base";
+// local transformer_model = "michiyasunaga/BioLinkBERT-base";
+local transformer_model = "leonweber/bigbio-mtl";
 local transformer_dim = 768;
 
 local max_len = 512;
 
 {
-    "random_seed": 8446,
-    "numpy_seed": 8446,
-    "pytorch_seed": 8446,
+    "random_seed": 8448,
+    "numpy_seed": 8448,
+    "pytorch_seed": 8448,
     "dataset_reader": {
         "type": "machamp_universal_reader",
         "target_max_tokens": max_len,
@@ -112,7 +113,7 @@ local max_len = 512;
             "type": "dataset_buckets",
             "max_tokens": 1024,
             "batch_size": 16,
-            "sampling_smoothing": 0.5, //1.0 == original size
+            "sampling_smoothing": 1.0, //1.0 == original size
             "sorting_keys": [
                 "tokens"
             ]
@@ -129,7 +130,7 @@ local max_len = 512;
             "type": "polynomial_decay",
             "warmup_steps": 50000,
         },
-        "num_epochs": 100,
+        "num_epochs": 50,
         "optimizer": {
             "type": "huggingface_adamw",
             "betas": [0.9, 0.99],
@@ -155,14 +156,14 @@ local max_len = 512;
         //"patience": 5, // disabled, because slanted_triangular changes the lr dynamically
         "validation_metric": "+.run/.sum"
     },
-    "distributed": {
-        "cuda_devices": [0, 1, 2, 3],
-//        "cuda_devices": [0],
-//        "master_address": "192.168.24.16",
-//        "master_address": "127.0.0.1",
-//        "master_port": "29510",
-//        "num_nodes": 2
-    },
+    // "distributed": {
+        // "cuda_devices": [0, 1, 2, 3],
+    //    "cuda_devices": [0],
+// //        "master_address": "192.168.24.16",
+// //        "master_address": "127.0.0.1",
+// //        "master_port": "29510",
+// //        "num_nodes": 2
+    // },
     "datasets_for_vocab_creation": [
         "train",
         "validation"//TODO can this be removed now that we add padding/unknown?

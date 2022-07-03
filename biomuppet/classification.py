@@ -109,31 +109,44 @@ if __name__ == '__main__':
                 "validation": train_valid["test"],
             })
 
-        ### Write train file
-        with (out / dataset.meta.name).with_suffix(".train").open("w", encoding="utf8") as f:
-            for example in dataset.data["train"]:
-                text = clean_text(example["text"])
-                if not text:
-                    continue
+        # ### Write train file
+        # with (out / dataset.meta.name).with_suffix(".train").open("w", encoding="utf8") as f:
+        #     for example in dataset.data["train"]:
+        #         text = clean_text(example["text"])
+        #         if not text:
+        #             continue
 
-                label = "|".join(sorted(example["labels"]))
-                if not label.strip():
-                    label = "None"
+        #         label = "|".join(sorted(example["labels"]))
+        #         if not label.strip():
+        #             label = "None"
 
-                f.write(text + "\t" + label + "\n")
+        #         f.write(text + "\t" + label + "\n")
 
-        ### Write validation file
-        with (out / dataset.meta.name).with_suffix(".valid").open("w", encoding="utf8") as f:
-            for example in dataset.data["validation"]:
-                text = example["text"].strip().replace("\t", " ").replace("\n", " ")
-                if not text:
-                    continue
-                label = "|".join(sorted(example["labels"]))
-                if not label.strip():
-                    label = "None"
+        # ### Write validation file
+        # with (out / dataset.meta.name).with_suffix(".valid").open("w", encoding="utf8") as f:
+        #     for example in dataset.data["validation"]:
+        #         text = example["text"].strip().replace("\t", " ").replace("\n", " ")
+        #         if not text:
+        #             continue
+        #         label = "|".join(sorted(example["labels"]))
+        #         if not label.strip():
+        #             label = "None"
 
-                f.write(text + "\t" + label + "\n")
+        #         f.write(text + "\t" + label + "\n")
 
-    ## Write Machamp config
-    with open(out / "config.json", "w") as f:
-        json.dump(config, f, indent=1)
+        ### Write test file
+        if "test" in dataset.data:
+            with (out / dataset.meta.name).with_suffix(".test").open("w", encoding="utf8") as f:
+                for example in dataset.data["test"]:
+                    text = example["text"].strip().replace("\t", " ").replace("\n", " ")
+                    if not text:
+                        continue
+                    label = "|".join(sorted(example["labels"]))
+                    if not label.strip():
+                        label = "None"
+
+                    f.write(text + "\t" + label + "\n")
+
+    # ## Write Machamp config
+    # with open(out / "config.json", "w") as f:
+    #     json.dump(config, f, indent=1)

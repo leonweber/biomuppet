@@ -135,10 +135,12 @@ if __name__ == '__main__':
             return example
 
         dataset.data = dataset.data.map(flatten_labels)
-        dataset.data["train"].to_csv((out / dataset.meta.name).with_suffix(".train"), sep="\t", index=None, header=None)
-        dataset.data["valid"].to_csv((out / dataset.meta.name).with_suffix(".valid"), sep="\t", index=None, header=None)
+        # dataset.data["train"].to_csv((out / dataset.meta.name).with_suffix(".train"), sep="\t", index=None, header=None)
+        # dataset.data["valid"].to_csv((out / dataset.meta.name).with_suffix(".valid"), sep="\t", index=None, header=None)
+        if "test" in dataset.data:
+            dataset.data["test"].to_csv((out / dataset.meta.name).with_suffix(".test"), sep="\t", index=None, header=None)
 
 
-    ## Write Machamp config
-    with open(out / "config.json", "w") as f:
-        json.dump(config, f, indent=1)
+    # ## Write Machamp config
+    # with open(out / "config.json", "w") as f:
+    #     json.dump(config, f, indent=1)

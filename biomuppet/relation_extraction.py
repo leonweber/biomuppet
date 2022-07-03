@@ -261,6 +261,19 @@ if __name__ == '__main__':
 
                 f.write(text + "\t" + label + "\n")
 
+        ### Write test file
+        if "test" in dataset.data:
+            with (out / dataset.meta.name).with_suffix(".test").open("w", encoding="utf8") as f:
+                for example in dataset.data["test"]:
+                    text = example["text"].strip().replace("\t", " ").replace("\n", " ")
+                    if not text:
+                        continue
+                    label = "|".join(sorted(example["labels"]))
+                    if not label.strip():
+                        label = "None"
+
+                    f.write(text + "\t" + label + "\n")
+
     ## Write Machamp config
     with open(out / "config.json", "w") as f:
         json.dump(config, f, indent=1)

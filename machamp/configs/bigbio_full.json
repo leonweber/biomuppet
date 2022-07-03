@@ -200,19 +200,6 @@
    }
   }
  },
- "classification_chemdner": {
-  "train_data_path": "data/bigbio/classification/chemdner_TEXT.train",
-  "validation_data_path": "data/bigbio/classification/chemdner_TEXT.valid",
-  "sent_idxs": [
-   0
-  ],
-  "tasks": {
-   "chemdner_TEXT": {
-    "column_idx": 1,
-    "task_type": "classification"
-   }
-  }
- },
  "classification_geokhoj_v1": {
   "train_data_path": "data/bigbio/classification/geokhoj_v1_TEXT.train",
   "validation_data_path": "data/bigbio/classification/geokhoj_v1_TEXT.valid",
@@ -269,7 +256,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_shared_task_2009_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "bionlp_shared_task_2009_NER": {
+   "bionlp_shared_task_2009_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -280,7 +267,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_epi_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "bionlp_st_2011_epi_NER": {
+   "bionlp_st_2011_epi_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -291,7 +278,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_ge_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "bionlp_st_2011_ge_NER": {
+   "bionlp_st_2011_ge_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -302,7 +289,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2011_id_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "bionlp_st_2011_id_NER": {
+   "bionlp_st_2011_id_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -313,7 +300,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_cg_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "bionlp_st_2013_cg_NER": {
+   "bionlp_st_2013_cg_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -324,7 +311,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_ge_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "bionlp_st_2013_ge_NER": {
+   "bionlp_st_2013_ge_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -335,7 +322,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_gro_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "bionlp_st_2013_gro_NER": {
+   "bionlp_st_2013_gro_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -346,7 +333,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/bionlp_st_2013_pc_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "bionlp_st_2013_pc_NER": {
+   "bionlp_st_2013_pc_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -357,7 +344,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/mlee_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "mlee_NER": {
+   "mlee_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -368,7 +355,7 @@
   "validation_data_path": "data/bigbio/event_extraction_trigger_recognition/pdr_NER.valid",
   "word_idx": 0,
   "tasks": {
-   "pdr_NER": {
+   "pdr_ED": {
     "column_idx": 1,
     "task_type": "seq"
    }
@@ -964,7 +951,7 @@
    0
   ],
   "tasks": {
-   "bionlp_shared_task_2009_RE": {
+   "bionlp_shared_task_2009_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -977,7 +964,7 @@
    0
   ],
   "tasks": {
-   "bionlp_st_2011_epi_RE": {
+   "bionlp_st_2011_epi_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -990,7 +977,7 @@
    0
   ],
   "tasks": {
-   "bionlp_st_2011_ge_RE": {
+   "bionlp_st_2011_ge_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -1003,7 +990,7 @@
    0
   ],
   "tasks": {
-   "bionlp_st_2011_id_RE": {
+   "bionlp_st_2011_id_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -1016,7 +1003,7 @@
    0
   ],
   "tasks": {
-   "bionlp_st_2013_cg_RE": {
+   "bionlp_st_2013_cg_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -1029,7 +1016,7 @@
    0
   ],
   "tasks": {
-   "bionlp_st_2013_ge_RE": {
+   "bionlp_st_2013_ge_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -1042,7 +1029,7 @@
    0
   ],
   "tasks": {
-   "bionlp_st_2013_gro_RE": {
+   "bionlp_st_2013_gro_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -1055,7 +1042,7 @@
    0
   ],
   "tasks": {
-   "bionlp_st_2013_pc_RE": {
+   "bionlp_st_2013_pc_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -1068,7 +1055,7 @@
    0
   ],
   "tasks": {
-   "mlee_RE": {
+   "mlee_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -1081,7 +1068,7 @@
    0
   ],
   "tasks": {
-   "pdr_RE": {
+   "pdr_EAE": {
     "column_idx": 1,
     "task_type": "classification"
    }
@@ -1199,19 +1186,6 @@
   ],
   "tasks": {
    "genia_relation_corpus_RE": {
-    "column_idx": 1,
-    "task_type": "classification"
-   }
-  }
- },
- "re_hprd50": {
-  "train_data_path": "data/bigbio/re/hprd50_RE.train",
-  "validation_data_path": "data/bigbio/re/hprd50_RE.valid",
-  "sent_idxs": [
-   0
-  ],
-  "tasks": {
-   "hprd50_RE": {
     "column_idx": 1,
     "task_type": "classification"
    }
