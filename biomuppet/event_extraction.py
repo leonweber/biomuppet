@@ -370,9 +370,21 @@ def write_as_relation_extraction_datasets():
 
                 f.write(text + "\t" + label + "\n")
 
-    ## Write Machamp config
-    with open(out / "config.json", "w") as f:
-        json.dump(config, f, indent=1)
+        if "test" in dataset.data:
+            with (out / dataset.name).with_suffix(".test").open("w", encoding="utf8") as f:
+                for example in dataset.data["test"]:
+                    text = example["text"].strip().replace("\t", " ").replace("\n", " ")
+                    if not text:
+                        continue
+                    label = "|".join(sorted(example["labels"]))
+                    if not label.strip():
+                        label = "None"
+
+                    f.write(text + "\t" + label + "\n")
+
+    # ## Write Machamp config
+    # with open(out / "config.json", "w") as f:
+    #     json.dump(config, f, indent=1)
 
 
 def write_as_ner_datasets():
@@ -404,27 +416,37 @@ def write_as_ner_datasets():
                 }
             )
 
-        with (out / dataset.meta.name).with_suffix(".train").open("w") as f:
-            for example in dataset.data["train"]:
-                for word, label in example["conll"]:
-                    if word or label:
-                        f.write(word + "\t" + label + "\n")
-                    else:
-                        f.write("\n")
-                f.write("\n")
+        # with (out / dataset.meta.name).with_suffix(".train").open("w") as f:
+        #     for example in dataset.data["train"]:
+        #         for word, label in example["conll"]:
+        #             if word or label:
+        #                 f.write(word + "\t" + label + "\n")
+        #             else:
+        #                 f.write("\n")
+        #         f.write("\n")
 
-        with (out / dataset.meta.name).with_suffix(".valid").open("w") as f:
-            for example in dataset.data["validation"]:
-                for word, label in example["conll"]:
-                    if word or label:
-                        f.write(word + "\t" + label + "\n")
-                    else:
-                        f.write("\n")
-                f.write("\n")
+        # with (out / dataset.meta.name).with_suffix(".valid").open("w") as f:
+        #     for example in dataset.data["validation"]:
+        #         for word, label in example["conll"]:
+        #             if word or label:
+        #                 f.write(word + "\t" + label + "\n")
+        #             else:
+        #                 f.write("\n")
+        #         f.write("\n")
+
+        if "test" in dataset.data:
+            with (out / dataset.meta.name).with_suffix(".test").open("w") as f:
+                for example in dataset.data["test"]:
+                    for word, label in example["conll"]:
+                        if word or label:
+                            f.write(word + "\t" + label + "\n")
+                        else:
+                            f.write("\n")
+                    f.write("\n")
 
     ## Write Machamp config
-    with open(out / "config.json", "w") as f:
-        json.dump(config, f, indent=1)
+    # with open(out / "config.json", "w") as f:
+    #     json.dump(config, f, indent=1)
 
 def test_trigger_detection():
 
@@ -487,4 +509,3 @@ if __name__ == "__main__":
 
     write_as_ner_datasets()
 
-    # test_trigger_detection()

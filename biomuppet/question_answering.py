@@ -128,6 +128,9 @@ def get_all_qa_datasets() -> List[SingleDataset]:
         if dataset_name in ignored_qa_datasets:
             continue
 
+        if "pubmed_qa" not in dataset_name:
+            continue
+
         module = datasets.load.dataset_module_factory(str(dataset_loader))
         builder_cls = datasets.load.import_main_class(module.module_path)
         bigbio_config_names = [subset_id +"_bigbio_qa" for subset_id in ds_subset_id[dataset_name]] \
@@ -280,6 +283,21 @@ if __name__ == '__main__':
 
                 f.write(text + "\t" + label + "\n")
             f.write("\n")
+
+        ### Write test file
+        if "test" in dataset.data:
+            with (out / name).with_suffix(".test").open("w") as f:
+                for example in dataset.data["test"]:
+                    text = example["text"].strip().replace("\t", " ").replace("\n", " ") if "text" in example.keys() \
+                        else example["sequence"][0]
+                    if not text:
+                        continue
+                    label = "|".join(sorted(example["labels"]))
+                    if not label.strip():
+                        label = "None"
+
+                    f.write(text + "\t" + label + "\n")
+                f.write("\n")
 
     with (out / "config.json").open("w") as f:
         json.dump(config, f)

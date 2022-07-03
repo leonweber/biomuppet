@@ -9,7 +9,7 @@ from bigbio.utils.constants import Tasks
 from bigbio.dataloader import BigBioConfigHelpers, BigBioConfigHelper
 from flair.tokenization import SegtokSentenceSplitter
 
-DEBUG = True
+DEBUG = False
 
 
 @dataclasses.dataclass
